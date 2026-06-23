@@ -48,7 +48,7 @@ this project follows [Semantic Versioning](https://semver.org/).
   need it (only FIPS does), reuses scratch buffers across iterations, and
   updates best positions in place. This roughly halved the native run time,
   making `turboswarm` (native) ~3× faster than `pyswarms` on the benchmark
-  functions. See the [Comparison](https://github.com/joselsalmeron/turboswarm) page.
+  functions. See the [Comparison](https://github.com/turboswarm/turboswarm.github.io) page.
 - **ackley**, **griewank** and **schwefel** benchmarks (the latter with the optimum
   away from the origin), with metadata registration (`meta`/`ALL`).
 - Python API: the new variants and topologies are selected by name

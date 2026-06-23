@@ -108,7 +108,7 @@ extend" section of [`CLAUDE.md`](CLAUDE.md).
 
 A navigable documentation portal (narrative guide + Python API reference) is
 built with MkDocs Material and published to **GitHub Pages**:
-<https://joselsalmeron.github.io/turboswarm/> *(live once Pages is enabled)*.
+<https://turboswarm.github.io/> *(live once Pages is enabled)*.
 
 Build it locally:
 

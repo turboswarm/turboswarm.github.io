@@ -94,4 +94,4 @@ python scripts/bench_vs_libs.py            # plain text
 python scripts/bench_vs_libs.py --markdown # Markdown table
 ```
 
-The benchmark script is [`scripts/bench_vs_libs.py`](https://github.com/joselsalmeron/turboswarm/blob/main/scripts/bench_vs_libs.py).
+The benchmark script is [`scripts/bench_vs_libs.py`](https://github.com/turboswarm/turboswarm.github.io/blob/main/scripts/bench_vs_libs.py).

@@ -30,9 +30,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/joselsalmeron/turboswarm"
-Repository = "https://github.com/joselsalmeron/turboswarm"
-Issues = "https://github.com/joselsalmeron/turboswarm/issues"
+Homepage = "https://github.com/turboswarm/turboswarm.github.io"
+Repository = "https://github.com/turboswarm/turboswarm.github.io"
+Issues = "https://github.com/turboswarm/turboswarm.github.io/issues"
 
 [project.optional-dependencies]
 notebooks = ["jupyter", "plotly"]

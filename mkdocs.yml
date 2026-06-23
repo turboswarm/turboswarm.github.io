@@ -1,8 +1,8 @@
 site_name: turboswarm
 site_description: Particle Swarm Optimization with a Rust core and a Python API.
-site_url: https://joselsalmeron.github.io/turboswarm/
-repo_url: https://github.com/joselsalmeron/turboswarm
-repo_name: joselsalmeron/turboswarm
+site_url: https://turboswarm.github.io/
+repo_url: https://github.com/turboswarm/turboswarm.github.io
+repo_name: turboswarm/turboswarm.github.io
 docs_dir: docs
 site_dir: site
 
