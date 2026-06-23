@@ -1,0 +1,44 @@
+# Packaging with maturin (Rust core + Python layer).
+# Development:  maturin develop --release
+# Publishing:   maturin build --release  (generates wheels in target/wheels/)
+
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "turboswarm"
+version = "0.1.0"
+description = "Particle Swarm Optimization with a Rust core"
+readme = "python/README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Jose L. Salmeron", email = "joseluis.salmeron@gmail.com" }]
+keywords = ["pso", "optimization", "swarm", "metaheuristics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "numpy",
+    "matplotlib",
+]
+
+[project.urls]
+Homepage = "https://github.com/joselsalmeron/turboswarm"
+Repository = "https://github.com/joselsalmeron/turboswarm"
+Issues = "https://github.com/joselsalmeron/turboswarm/issues"
+
+[project.optional-dependencies]
+notebooks = ["jupyter", "plotly"]
+docs = ["mkdocs-material", "mkdocstrings[python]", "black"]
+
+[tool.maturin]
+manifest-path = "crates/pso-py/Cargo.toml"
+python-source = "python"
+module-name = "turboswarm.turboswarm_native"

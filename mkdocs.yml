@@ -1,0 +1,83 @@
+site_name: turboswarm
+site_description: Particle Swarm Optimization with a Rust core and a Python API.
+site_url: https://joselsalmeron.github.io/turboswarm/
+repo_url: https://github.com/joselsalmeron/turboswarm
+repo_name: joselsalmeron/turboswarm
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Getting started: getting-started.md
+  - Guide:
+      - Variants: guide/variants.md
+      - Topologies: guide/topologies.md
+      - Benchmarks: guide/benchmarks.md
+      - Integer optimization: guide/integer.md
+      - Constraints: guide/constraints.md
+      - Boundary handling: guide/boundaries.md
+      - Multi-objective: guide/multiobjective.md
+      - Visualization: guide/visualization.md
+  - Comparison: comparison.md
+  - Architecture: architecture.md
+  - Extending: extending.md
+  - API reference:
+      - Python: api/python.md
+      - Rust: api/rust.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.arithmatex:
+      generic: true
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_root_heading: true
+            show_source: false
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true

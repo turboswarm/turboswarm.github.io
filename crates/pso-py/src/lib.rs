@@ -1,0 +1,731 @@
+//! Python (PyO3) bindings for the Rust PSO core.
+//!
+//! Exposes `minimize(...)` and a `PsoResult` class. The function to optimize
+//! can be:
+//!   - a Python callable (flexible; reacquires the GIL on each evaluation), or
+//!   - the NAME of a native Rust benchmark (fast, runs without the GIL).
+
+use numpy::{IntoPyArray, PyReadonlyArray1};
+use pyo3::exceptions::{PyKeyError, PyValueError};
+use pyo3::prelude::*;
+use pyo3::types::PyList;
+
+use pso_core::benchmarks::{ackley, griewank, rastrigin, rosenbrock, schwefel, sphere};
+use pso_core::prelude::*;
+
+/// Conversion to f64 for returning positions to Python. Unlike
+/// `Into<f64>`, this is implemented for `i64` (we accept the lossy
+/// conversion, irrelevant within the range of an optimization problem).
+trait ToF64: Copy {
+    fn to_f64(self) -> f64;
+}
+impl ToF64 for f64 {
+    fn to_f64(self) -> f64 {
+        self
+    }
+}
+impl ToF64 for i64 {
+    fn to_f64(self) -> f64 {
+        self as f64
+    }
+}
+
+/// Result of an optimization.
+///
+/// Attributes:
+///     best_position (list[float]): best position found, already decoded
+///         to the space's type (integers if ``integer=True``).
+///     best_value (float): objective function value at ``best_position``.
+///     convergence (list[float]): global best value after each iteration (the
+///         convergence curve, useful for ``viz.plot_convergence``).
+///     history (list[list[list[float]]]): positions of all particles
+///         per iteration, indexed ``history[iteration][particle][dimension]``.
+///         Empty if run with ``record_history=False``. Required for
+///         ``viz.animate_swarm``.
+///     evaluations (int): total number of objective evaluations performed.
+///     stop_reason (str): why the run stopped — one of ``"max_iterations"``,
+///         ``"target"``, ``"max_evaluations"``, ``"stagnation"``, ``"max_time"``.
+#[pyclass(name = "PsoResult")]
+#[derive(Clone)]
+struct PyPsoResult {
+    /// Best position found (list of floats).
+    #[pyo3(get)]
+    best_position: Vec<f64>,
+    /// Best objective function value.
+    #[pyo3(get)]
+    best_value: f64,
+    /// Convergence curve: best value per iteration.
+    #[pyo3(get)]
+    convergence: Vec<f64>,
+    /// Positions per iteration: history[iter][particle][dim]. Empty if
+    /// record_history=False.
+    #[pyo3(get)]
+    history: Vec<Vec<Vec<f64>>>,
+    /// Total number of objective evaluations performed.
+    #[pyo3(get)]
+    evaluations: usize,
+    /// Why the run stopped (see the class docstring for the values).
+    #[pyo3(get)]
+    stop_reason: String,
+}
+
+#[pymethods]
+impl PyPsoResult {
+    fn __repr__(&self) -> String {
+        format!(
+            "PsoResult(best_value={:.6}, best_position={:?}, iters={}, stop_reason={})",
+            self.best_value,
+            self.best_position,
+            self.convergence.len(),
+            self.stop_reason
+        )
+    }
+}
+
+/// Resolves a native benchmark by name.
+fn native_benchmark(name: &str) -> PyResult<fn(&[f64]) -> f64> {
+    match name {
+        "sphere" => Ok(sphere as fn(&[f64]) -> f64),
+        "rastrigin" => Ok(rastrigin as fn(&[f64]) -> f64),
+        "rosenbrock" => Ok(rosenbrock as fn(&[f64]) -> f64),
+        "ackley" => Ok(ackley as fn(&[f64]) -> f64),
+        "griewank" => Ok(griewank as fn(&[f64]) -> f64),
+        "schwefel" => Ok(schwefel as fn(&[f64]) -> f64),
+        other => Err(PyKeyError::new_err(format!(
+            "unknown native benchmark: '{other}'. Available: \
+             sphere, rastrigin, rosenbrock, ackley, griewank, schwefel"
+        ))),
+    }
+}
+
+/// Builds the velocity rule by name.
+fn build_velocity(name: &str, w: f64, c1: f64, c2: f64) -> PyResult<Box<dyn Velocity>> {
+    match name {
+        "inertia" => Ok(Box::new(InertiaVelocity::new(w, c1, c2))),
+        // Constriction derives χ from c1+c2; it needs c1+c2 > 4. If the user
+        // left the default c values (1.49445, sum 2.99), we use the classic
+        // Clerc-Kennedy values (2.05) so the formula is well defined.
+        "constriction" => {
+            let (c1, c2) = if c1 + c2 > 4.0 { (c1, c2) } else { (2.05, 2.05) };
+            Ok(Box::new(ConstrictionVelocity::new(c1, c2)))
+        }
+        // FIPS distributes φ = c1 + c2 across all neighbors; it needs φ > 4.
+        // With the default c values (sum 2.99) we use the classic φ of 4.1.
+        "fips" => {
+            let phi = if c1 + c2 > 4.0 { c1 + c2 } else { 4.1 };
+            Ok(Box::new(FipsVelocity::new(phi)))
+        }
+        other => Err(PyValueError::new_err(format!(
+            "unknown variant: '{other}'. Available: inertia, constriction, fips"
+        ))),
+    }
+}
+
+/// Parses per-dimension variable type names into `VarType`s.
+fn build_var_types(names: &[String]) -> PyResult<Vec<VarType>> {
+    names
+        .iter()
+        .map(|n| match n.as_str() {
+            "real" | "float" | "continuous" => Ok(VarType::Real),
+            "integer" | "int" => Ok(VarType::Integer),
+            "binary" | "bin" => Ok(VarType::Binary),
+            other => Err(PyValueError::new_err(format!(
+                "unknown variable type: '{other}'. Available: real, integer, binary"
+            ))),
+        })
+        .collect()
+}
+
+/// Maps a boundary-handling name to its strategy.
+fn build_boundary(name: &str) -> PyResult<BoundaryHandling> {
+    match name {
+        "clamp" => Ok(BoundaryHandling::Clamp),
+        "reflect" => Ok(BoundaryHandling::Reflect),
+        "wrap" => Ok(BoundaryHandling::Wrap),
+        "reinit" => Ok(BoundaryHandling::Reinit),
+        other => Err(PyValueError::new_err(format!(
+            "unknown bounds_handling: '{other}'. Available: clamp, reflect, wrap, reinit"
+        ))),
+    }
+}
+
+/// Builds the topology by name. `n_particles` allows sizing the Von Neumann
+/// grid automatically; `seed` seeds the random topology's internal RNG.
+fn build_topology(name: &str, n_particles: usize, seed: Option<u64>) -> PyResult<Box<dyn Topology>> {
+    match name {
+        "global" => Ok(Box::new(GlobalBest::new())),
+        "ring" => Ok(Box::new(Ring::lbest())),
+        "vonneumann" | "von_neumann" => Ok(Box::new(VonNeumann::square_for(n_particles))),
+        "random" => Ok(Box::new(Random::new(3, seed.unwrap_or(0)))),
+        other => Err(PyValueError::new_err(format!(
+            "unknown topology: '{other}'. Available: global, ring, vonneumann, random"
+        ))),
+    }
+}
+
+/// Minimizes an objective function with Particle Swarm Optimization.
+///
+/// The function to optimize can be a Python *callable* or the name of a
+/// native Rust benchmark (faster, runs without the GIL).
+///
+/// Args:
+///     objective: callable ``f(list[float]) -> float`` to minimize, OR the name
+///         (str) of a native benchmark: ``"sphere"``, ``"rastrigin"``,
+///         ``"rosenbrock"``, ``"ackley"``, ``"griewank"``, ``"schwefel"``.
+///     bounds (list[tuple[float, float]]): ``(min, max)`` bounds per dimension.
+///         Its length sets the problem dimension.
+///     integer (bool): if ``True``, optimizes over integer variables (the
+///         position is discretized by rounding when evaluated). Defaults to ``False``.
+///     n_particles (int): swarm size. Defaults to 30.
+///     max_iter (int): number of iterations. Defaults to 100.
+///     w (float): inertia weight (``"inertia"`` variant). Defaults to 0.729.
+///     c1 (float): cognitive coefficient (attraction to the personal best).
+///     c2 (float): social coefficient (attraction to the neighborhood best).
+///     velocity (str): velocity variant: ``"inertia"``, ``"constriction"``
+///         or ``"fips"``. Defaults to ``"inertia"``. ``"constriction"`` and
+///         ``"fips"`` derive their factor from ``c1 + c2`` (use 2.05/4.1 if the
+///         sum does not exceed 4).
+///     topology (str): social structure: ``"global"``, ``"ring"``,
+///         ``"vonneumann"`` or ``"random"``. Defaults to ``"global"``. FIPS
+///         performs better with local topologies (``"ring"``, ``"vonneumann"``).
+///     seed (int | None): RNG seed. Fix it for reproducible runs. Defaults to
+///         ``None`` (system seed).
+///     record_history (bool): if ``True`` (the default), stores the swarm
+///         trace for visualization. Disable it to save memory and time.
+///     v_max (float | None): if set, clamps every velocity component to
+///         ``[-v_max, v_max]`` after each update. Defaults to ``None`` (off).
+///     patience (int): early stopping. Stop when the global best does not
+///         improve by more than ``tol`` for ``patience`` consecutive
+///         iterations. ``0`` (default) disables it (always runs ``max_iter``).
+///     tol (float): minimum improvement counted as progress for the
+///         ``patience`` window. Defaults to ``0.0``.
+///     constraints (list[callable] | None): inequality constraints, each a
+///         callable ``g(x) -> float`` that is feasible when ``g(x) <= 0``. A
+///         quadratic penalty ``penalty * sum(max(0, g(x))**2)`` is added to the
+///         objective. Requires ``objective`` to be a Python callable (not a
+///         native benchmark name). Defaults to ``None``.
+///     penalty (float): weight of the constraint penalty. Defaults to ``1e6``.
+///     binary (bool): if ``True``, optimize over binary variables ``{0, 1}``
+///         (a {0,1} integer space); the dimension is taken from ``bounds``.
+///         Defaults to ``False``.
+///     max_evals (int | None): stop after this many objective evaluations.
+///     target (float | None): stop as soon as the best value is ``<= target``.
+///     max_time (float | None): stop after this many seconds of wall-clock time.
+///     callback (callable | None): called once per iteration as
+///         ``callback(iteration, best_value)``. Return ``False`` to stop early
+///         (reported as ``stop_reason="callback"``); ``None`` or any other
+///         return continues. Useful for live logging or custom stopping.
+///     bounds_handling (str): what to do with particles that leave the bounds:
+///         ``"clamp"`` (default), ``"reflect"``, ``"wrap"`` or ``"reinit"``.
+///     vectorized (bool): if ``True``, ``objective`` receives the WHOLE swarm
+///         per call as a NumPy array (shape ``n_particles x dim``) and must
+///         return one value per row. This lets a NumPy-vectorized objective
+///         amortize its overhead over the swarm. Uses synchronous updates;
+///         incompatible with native benchmarks, constraints and callback.
+///         Defaults to ``False``.
+///     var_types (list[str] | None): per-dimension variable types for a mixed
+///         problem — each ``"real"``, ``"integer"`` or ``"binary"`` (same
+///         length as ``bounds``). Integer/binary dimensions come back as
+///         whole-valued floats. Takes precedence over ``integer``/``binary``.
+///
+/// Returns:
+///     PsoResult: with ``best_position``, ``best_value``, ``convergence`` and
+///     ``history``.
+///
+/// Raises:
+///     KeyError: if the name of a non-existent native benchmark is passed.
+///     ValueError: if the variant or topology does not exist.
+///     Exception: propagates any error raised by the Python ``objective``.
+///
+/// Example:
+///     >>> import turboswarm as pso
+///     >>> r = pso.minimize("rastrigin", bounds=[(-5.12, 5.12)] * 2, seed=42)
+///     >>> r.best_value < 1e-3
+///     True
+///     >>> r = pso.minimize(lambda x: sum(xi*xi for xi in x),
+///     ...                  bounds=[(-5, 5)] * 3, velocity="fips", topology="ring")
+#[allow(clippy::too_many_arguments)]
+#[pyfunction]
+#[pyo3(signature = (
+    objective,
+    bounds,
+    integer = false,
+    n_particles = 30,
+    max_iter = 100,
+    w = 0.729,
+    c1 = 1.49445,
+    c2 = 1.49445,
+    velocity = "inertia",
+    topology = "global",
+    seed = None,
+    record_history = true,
+    v_max = None,
+    patience = 0,
+    tol = 0.0,
+    constraints = None,
+    penalty = 1e6,
+    binary = false,
+    max_evals = None,
+    target = None,
+    max_time = None,
+    callback = None,
+    bounds_handling = "clamp",
+    vectorized = false,
+    var_types = None,
+))]
+fn minimize(
+    py: Python<'_>,
+    objective: PyObject,
+    bounds: Vec<(f64, f64)>,
+    integer: bool,
+    n_particles: usize,
+    max_iter: usize,
+    w: f64,
+    c1: f64,
+    c2: f64,
+    velocity: &str,
+    topology: &str,
+    seed: Option<u64>,
+    record_history: bool,
+    v_max: Option<f64>,
+    patience: usize,
+    tol: f64,
+    constraints: Option<Vec<PyObject>>,
+    penalty: f64,
+    binary: bool,
+    max_evals: Option<usize>,
+    target: Option<f64>,
+    max_time: Option<f64>,
+    callback: Option<PyObject>,
+    bounds_handling: &str,
+    vectorized: bool,
+    var_types: Option<Vec<String>>,
+) -> PyResult<PyPsoResult> {
+    let params = PsoParams {
+        w,
+        c1,
+        c2,
+        n_particles,
+        max_iterations: max_iter,
+        seed,
+        record_history,
+        v_max,
+        patience,
+        tol,
+        max_evals,
+        target,
+        max_time: max_time.map(std::time::Duration::from_secs_f64),
+        bounds_handling: build_boundary(bounds_handling)?,
+    };
+    let vel = build_velocity(velocity, w, c1, c2)?;
+    let topo = build_topology(topology, n_particles, seed)?;
+
+    // Is the objective function a string (native benchmark) or a callable?
+    let native_name: Option<String> = objective.extract(py).ok();
+
+    let constraints = constraints.unwrap_or_default();
+    if !constraints.is_empty() && native_name.is_some() {
+        return Err(PyValueError::new_err(
+            "constraints require a Python objective callable, not a native \
+             benchmark name; pass a function as the objective",
+        ));
+    }
+
+    if let Some(names) = var_types {
+        // Per-dimension types: real / integer / binary.
+        if names.len() != bounds.len() {
+            return Err(PyValueError::new_err(format!(
+                "var_types has length {} but bounds has length {}",
+                names.len(),
+                bounds.len()
+            )));
+        }
+        let types = build_var_types(&names)?;
+        let space = MixedSpace::new(bounds, types);
+        // Mixed positions decode to floats (integer dims are whole-valued).
+        run(py, space, vel, topo, params, objective, native_name, false, constraints, penalty, callback, vectorized)
+    } else if integer || binary {
+        // `binary` is the {0, 1} special case of an integer space.
+        let int_bounds: Vec<(i64, i64)> = if binary {
+            vec![(0, 1); bounds.len()]
+        } else {
+            bounds
+                .iter()
+                .map(|&(lo, hi)| (lo.round() as i64, hi.round() as i64))
+                .collect()
+        };
+        let space = IntegerSpace::new(int_bounds);
+        run(py, space, vel, topo, params, objective, native_name, true, constraints, penalty, callback, vectorized)
+    } else {
+        let space = ContinuousSpace::new(bounds);
+        run(py, space, vel, topo, params, objective, native_name, false, constraints, penalty, callback, vectorized)
+    }
+}
+
+/// Logic common to both spaces. `S::Scalar` is converted to `f64` to
+/// always return the position as a list of floats to Python.
+#[allow(clippy::too_many_arguments)]
+fn run<S>(
+    py: Python<'_>,
+    space: S,
+    vel: Box<dyn Velocity>,
+    topo: Box<dyn Topology>,
+    params: PsoParams,
+    objective: PyObject,
+    native_name: Option<String>,
+    is_integer: bool,
+    constraints: Vec<PyObject>,
+    penalty: f64,
+    callback: Option<PyObject>,
+    vectorized: bool,
+) -> PyResult<PyPsoResult>
+where
+    S: SearchSpace,
+    S::Scalar: ToF64,
+{
+    use std::cell::RefCell;
+
+    let pso = Pso::new(space, vel, topo, params);
+    // Resolve the native benchmark once (constraints are rejected for it).
+    let native_fn = match &native_name {
+        Some(name) => Some(native_benchmark(name)?),
+        None => None,
+    };
+    // Shared so both the objective and the callback closures can record a
+    // Python error and abort the run.
+    let call_error: RefCell<Option<PyErr>> = RefCell::new(None);
+
+    // Vectorized path: one call per iteration with the whole swarm.
+    if vectorized {
+        if native_fn.is_some() {
+            return Err(PyValueError::new_err(
+                "vectorized=True requires a Python objective callable, not a native benchmark",
+            ));
+        }
+        if !constraints.is_empty() || callback.is_some() {
+            return Err(PyValueError::new_err(
+                "vectorized=True does not support constraints or callback yet",
+            ));
+        }
+        // The swarm is passed as a contiguous NumPy array (one buffer copy, no
+        // per-element Python objects), and the result is read back as a slice.
+        let batch = |positions: &[Vec<S::Scalar>]| -> Vec<f64> {
+            let n = positions.len();
+            if call_error.borrow().is_some() {
+                return vec![f64::INFINITY; n];
+            }
+            let dim = positions.first().map_or(0, |p| p.len());
+            let flat: Vec<f64> = positions
+                .iter()
+                .flat_map(|p| p.iter().map(|&v| v.to_f64()))
+                .collect();
+            let arr = numpy::ndarray::Array2::from_shape_vec((n, dim), flat)
+                .expect("n*dim matches the flat buffer");
+            let pyarr = arr.into_pyarray_bound(py);
+
+            let out = match objective.call1(py, (pyarr,)) {
+                Ok(o) => o,
+                Err(e) => {
+                    *call_error.borrow_mut() = Some(e);
+                    return vec![f64::INFINITY; n];
+                }
+            };
+            // Fast path: a NumPy array result is read as a contiguous slice.
+            // Fall back to a generic sequence (e.g. a Python list).
+            let vals: Vec<f64> = if let Ok(a) = out.extract::<PyReadonlyArray1<f64>>(py) {
+                a.as_array().iter().copied().collect()
+            } else {
+                match out.extract::<Vec<f64>>(py) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        *call_error.borrow_mut() = Some(e);
+                        return vec![f64::INFINITY; n];
+                    }
+                }
+            };
+            if vals.len() != n {
+                *call_error.borrow_mut() = Some(PyValueError::new_err(
+                    "vectorized objective must return one value per row",
+                ));
+                return vec![f64::INFINITY; n];
+            }
+            vals
+        };
+        let result = pso.minimize_batch(batch);
+        if let Some(e) = call_error.into_inner() {
+            return Err(e);
+        }
+        return Ok(to_py_result(result));
+    }
+
+    // Single objective closure: native path stays GIL-free; the Python path
+    // reacquires the GIL and applies the constraint penalty.
+    let eval = |x: &[S::Scalar]| -> f64 {
+        if call_error.borrow().is_some() {
+            return f64::INFINITY;
+        }
+        if let Some(f) = native_fn {
+            let xf: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
+            return f(&xf);
+        }
+        let args = if is_integer {
+            let xs: Vec<i64> = x.iter().map(|&v| v.to_f64() as i64).collect();
+            PyList::new_bound(py, xs).into_any()
+        } else {
+            let xs: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
+            PyList::new_bound(py, xs).into_any()
+        };
+        let base = match objective.call1(py, (args.clone(),)).and_then(|r| r.extract::<f64>(py)) {
+            Ok(val) => val,
+            Err(e) => {
+                *call_error.borrow_mut() = Some(e);
+                return f64::INFINITY;
+            }
+        };
+        let mut penalty_term = 0.0;
+        for g in &constraints {
+            match g.call1(py, (args.clone(),)).and_then(|r| r.extract::<f64>(py)) {
+                Ok(gv) => {
+                    let viol = gv.max(0.0);
+                    penalty_term += viol * viol;
+                }
+                Err(e) => {
+                    *call_error.borrow_mut() = Some(e);
+                    return f64::INFINITY;
+                }
+            }
+        }
+        base + penalty * penalty_term
+    };
+
+    let result = if let Some(cb) = callback {
+        // Called once per iteration with (iteration, best_value). Returning
+        // False stops the run; None / non-bool returns continue.
+        let cb_closure = |info: &IterationInfo| -> bool {
+            if call_error.borrow().is_some() {
+                return false;
+            }
+            match cb.call1(py, (info.iteration, info.best_value)) {
+                Ok(ret) => ret.extract::<bool>(py).unwrap_or(true),
+                Err(e) => {
+                    *call_error.borrow_mut() = Some(e);
+                    false
+                }
+            }
+        };
+        pso.minimize_with_callback(eval, cb_closure)
+    } else {
+        pso.minimize(eval)
+    };
+
+    if let Some(e) = call_error.into_inner() {
+        return Err(e);
+    }
+    Ok(to_py_result(result))
+}
+
+fn to_py_result<T>(r: PsoResult<T>) -> PyPsoResult
+where
+    T: ToF64,
+{
+    PyPsoResult {
+        best_position: r.best_position.iter().map(|&v| v.to_f64()).collect(),
+        best_value: r.best_value,
+        convergence: r.history.best_value.clone(),
+        history: r.history.positions,
+        evaluations: r.evaluations,
+        stop_reason: r.stop_reason.as_str().to_string(),
+    }
+}
+
+/// An approximated Pareto front returned by `minimize_multi`.
+///
+/// Attributes:
+///     positions (list[list[float]]): the non-dominated decision vectors.
+///     objectives (list[list[float]]): their objective values (same order).
+#[pyclass(name = "ParetoFront")]
+#[derive(Clone)]
+struct PyParetoFront {
+    /// Non-dominated decision vectors.
+    #[pyo3(get)]
+    positions: Vec<Vec<f64>>,
+    /// Objective values of each solution.
+    #[pyo3(get)]
+    objectives: Vec<Vec<f64>>,
+}
+
+#[pymethods]
+impl PyParetoFront {
+    fn __len__(&self) -> usize {
+        self.positions.len()
+    }
+    fn __repr__(&self) -> String {
+        format!("ParetoFront(size={})", self.positions.len())
+    }
+}
+
+/// Common multi-objective driver. Evaluates a Python callable that returns a
+/// list of objective values, and returns the Pareto front.
+fn run_multi<S>(
+    py: Python<'_>,
+    space: S,
+    vel: Box<dyn Velocity>,
+    params: MopsoParams,
+    objective: PyObject,
+    is_integer: bool,
+) -> PyResult<PyParetoFront>
+where
+    S: SearchSpace,
+    S::Scalar: ToF64,
+{
+    use std::cell::{Cell, RefCell};
+
+    let mopso = Mopso::new(space, vel, params);
+    let call_error: RefCell<Option<PyErr>> = RefCell::new(None);
+    let n_obj = Cell::new(1usize); // remembered objective count for error fills
+
+    let obj = |x: &[S::Scalar]| -> Vec<f64> {
+        if call_error.borrow().is_some() {
+            return vec![f64::INFINITY; n_obj.get()];
+        }
+        let args = if is_integer {
+            let xs: Vec<i64> = x.iter().map(|&v| v.to_f64() as i64).collect();
+            PyList::new_bound(py, xs).into_any()
+        } else {
+            let xs: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
+            PyList::new_bound(py, xs).into_any()
+        };
+        match objective.call1(py, (args,)).and_then(|r| r.extract::<Vec<f64>>(py)) {
+            Ok(v) => {
+                n_obj.set(v.len());
+                v
+            }
+            Err(e) => {
+                *call_error.borrow_mut() = Some(e);
+                vec![f64::INFINITY; n_obj.get()]
+            }
+        }
+    };
+
+    let result = mopso.minimize(obj);
+    if let Some(e) = call_error.into_inner() {
+        return Err(e);
+    }
+    let positions = result
+        .front
+        .iter()
+        .map(|s| s.position.iter().map(|&v| v.to_f64()).collect())
+        .collect();
+    let objectives = result.front.iter().map(|s| s.objectives.clone()).collect();
+    Ok(PyParetoFront { positions, objectives })
+}
+
+/// Multi-objective optimization (MOPSO). Returns the Pareto front.
+///
+/// Args:
+///     objective: callable ``f(list) -> list[float]`` returning one value per
+///         objective (all minimized).
+///     bounds (list[tuple[float, float]]): ``(min, max)`` per dimension.
+///     n_particles (int): swarm size. Defaults to 100.
+///     max_iter (int): iterations. Defaults to 100.
+///     archive_size (int): maximum Pareto-front size. Defaults to 100.
+///     w, c1, c2 (float): velocity coefficients.
+///     velocity (str): ``"inertia"`` or ``"constriction"`` (single-leader
+///         rules; ``"fips"`` is not applicable to MOPSO).
+///     seed (int | None): RNG seed.
+///     integer (bool), binary (bool), var_types (list[str] | None): same
+///         meaning as in ``minimize``.
+///     mutation_rate (float): turbulence strength in [0, 1] (default 0.1);
+///         improves front spread. ``0`` disables it.
+///
+/// Returns:
+///     ParetoFront: with ``positions`` and ``objectives``.
+#[allow(clippy::too_many_arguments)]
+#[pyfunction]
+#[pyo3(signature = (
+    objective,
+    bounds,
+    n_particles = 100,
+    max_iter = 100,
+    archive_size = 100,
+    w = 0.729,
+    c1 = 1.49445,
+    c2 = 1.49445,
+    velocity = "inertia",
+    seed = None,
+    integer = false,
+    binary = false,
+    var_types = None,
+    mutation_rate = 0.1,
+))]
+fn minimize_multi(
+    py: Python<'_>,
+    objective: PyObject,
+    bounds: Vec<(f64, f64)>,
+    n_particles: usize,
+    max_iter: usize,
+    archive_size: usize,
+    w: f64,
+    c1: f64,
+    c2: f64,
+    velocity: &str,
+    seed: Option<u64>,
+    integer: bool,
+    binary: bool,
+    var_types: Option<Vec<String>>,
+    mutation_rate: f64,
+) -> PyResult<PyParetoFront> {
+    if velocity == "fips" {
+        return Err(PyValueError::new_err(
+            "MOPSO needs a single-leader velocity ('inertia' or 'constriction'); 'fips' does not apply",
+        ));
+    }
+    let vel = build_velocity(velocity, w, c1, c2)?;
+    let params = MopsoParams {
+        n_particles,
+        max_iterations: max_iter,
+        archive_size,
+        seed,
+        mutation_rate,
+    };
+
+    if let Some(names) = var_types {
+        if names.len() != bounds.len() {
+            return Err(PyValueError::new_err("var_types length must match bounds"));
+        }
+        let space = MixedSpace::new(bounds, build_var_types(&names)?);
+        run_multi(py, space, vel, params, objective, false)
+    } else if integer || binary {
+        let int_bounds: Vec<(i64, i64)> = if binary {
+            vec![(0, 1); bounds.len()]
+        } else {
+            bounds.iter().map(|&(lo, hi)| (lo.round() as i64, hi.round() as i64)).collect()
+        };
+        run_multi(py, IntegerSpace::new(int_bounds), vel, params, objective, true)
+    } else {
+        run_multi(py, ContinuousSpace::new(bounds), vel, params, objective, false)
+    }
+}
+
+/// Metadata of a native benchmark: `(bound, optimum_value)`. `bound` is the
+/// recommended symmetric bound per dimension. Useful for auto-adjusting plot
+/// domains or building `bounds` without hardcoding them by hand.
+#[pyfunction]
+fn benchmark_info(name: &str) -> PyResult<(f64, f64)> {
+    match pso_core::benchmarks::meta(name) {
+        Some(b) => Ok((b.bound, b.optimum_value)),
+        None => Err(PyKeyError::new_err(format!(
+            "unknown native benchmark: '{name}'"
+        ))),
+    }
+}
+
+#[pymodule]
+fn turboswarm_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(minimize, m)?)?;
+    m.add_function(wrap_pyfunction!(minimize_multi, m)?)?;
+    m.add_function(wrap_pyfunction!(benchmark_info, m)?)?;
+    m.add_class::<PyPsoResult>()?;
+    m.add_class::<PyParetoFront>()?;
+    Ok(())
+}

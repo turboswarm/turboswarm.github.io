@@ -1,0 +1,19 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pso-core",
+    "crates/pso-py",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Jose L. Salmeron <joseluis.salmeron@gmail.com>"]
+repository = "https://github.com/joselsalmeron/turboswarm"
+homepage = "https://github.com/joselsalmeron/turboswarm"
+
+[workspace.dependencies]
+rand = "0.8"
+rand_chacha = "0.3"   # RNG with reproducible seed (reproducibility matters)
+rayon = "1"           # data parallelism for parallel objective evaluation

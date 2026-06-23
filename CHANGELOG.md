@@ -1,0 +1,76 @@
+# Changelog
+
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
+this project follows [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+- **Constriction** velocity variant (Clerc-Kennedy): the χ factor is derived
+  from `c1 + c2`.
+- **FIPS** velocity variant (Fully Informed PSO): the particle is informed
+  by its entire neighborhood, not just its best.
+- **Ring** (`Ring`, lbest), **Von Neumann** (`VonNeumann`, toroidal 2D grid)
+  and **Random** (`Random`, seeded random neighborhoods) topologies.
+- **Early stopping** (`patience` + `tol`) and **velocity clamping** (`v_max`),
+  exposed through both the Rust `PsoParams` and the Python `minimize`.
+- **Inequality constraints** (penalty method) in the Python `minimize`
+  (`constraints=`, `penalty=`); feasible when `g(x) <= 0`.
+- **Parallel objective evaluation** from Rust: `Pso::minimize_parallel`
+  (powered by `rayon`, synchronous updates) for expensive objectives.
+- More **stop conditions**: target value (`target`), evaluation budget
+  (`max_evals`) and wall-clock budget (`max_time`). `PsoResult` now reports
+  `evaluations` and a `stop_reason`.
+- **Per-iteration callback** (`callback=` in Python, `minimize_with_callback`
+  in Rust): receives an `IterationInfo` snapshot and can request an early stop.
+- **Boundary-handling strategies** (`bounds_handling=`): `clamp` (default),
+  `reflect`, `wrap` and `reinit`, via `SearchSpace::enforce_bounds`.
+- **Multi-objective optimization (MOPSO)**: `pso_core::mopso` (`Mopso`,
+  `MopsoParams`, `MopsoResult`) and `minimize_multi` in Python return an
+  approximated Pareto front (external archive + crowding distance, plus a
+  turbulence/mutation operator via `mutation_rate`). Plus `viz.plot_pareto` to
+  visualize a 2-objective front.
+- **Mixed variable types**: `MixedSpace` (Rust) and `var_types=` (Python) allow
+  a per-dimension choice of `real`, `integer` or `binary` in one problem.
+- **Batched/vectorized objective**: `Pso::minimize_batch` in Rust and
+  `vectorized=True` in Python evaluate the whole swarm per call. The Python path
+  passes the swarm as a contiguous **NumPy array** (via the `numpy` crate) and
+  reads results back as a slice — matching `pyswarms` on expensive vectorizable
+  objectives.
+- Documentation: a navigable MkDocs Material portal, including a `Comparison`
+  page that benchmarks turboswarm against `pyswarms` and `pyswarm`.
+- The package is named **turboswarm**.
+- Example notebooks in `notebooks/` (quickstart; variants & topologies;
+  integer/binary/mixed & constraints; multi-objective).
+
+### Performance
+- The main loop no longer clones the full neighborhood for variants that do not
+  need it (only FIPS does), reuses scratch buffers across iterations, and
+  updates best positions in place. This roughly halved the native run time,
+  making `turboswarm` (native) ~3× faster than `pyswarms` on the benchmark
+  functions. See the [Comparison](https://github.com/joselsalmeron/turboswarm) page.
+- **ackley**, **griewank** and **schwefel** benchmarks (the latter with the optimum
+  away from the origin), with metadata registration (`meta`/`ALL`).
+- Python API: the new variants and topologies are selected by name
+  (`velocity=`, `topology=`); new `benchmark_info(name)` function.
+- Documentation: complete docstrings in Rust (`cargo doc`) and in the Python API
+  (rendered with mkdocstrings); `#![warn(missing_docs)]` in `pso-core`; READMEs
+  and publishing metadata (Cargo + PyPI).
+
+### Changed
+- The `Topology` trait is now defined by `neighbors(i)` (the full
+  neighborhood); `best_neighbor` is derived by default. `UpdateContext` exposes
+  `neighbor_bests` (the `pbest` of the entire neighborhood). The behavior of
+  the classic variants does not change (verified by the determinism tests).
+
+## [0.1.0]
+
+### Added
+- Rust core: `SearchSpace`, `Velocity`, `Topology` traits; generic PSO loop.
+- Continuous (`ContinuousSpace`) and integer (`IntegerSpace`) spaces.
+- Inertia variant (`InertiaVelocity`, with optional decay) and global topology
+  (`GlobalBest`).
+- History recording for visualization; sphere, rastrigin and
+  rosenbrock benchmarks; convergence and reproducibility tests.
+- Python bindings (PyO3 + maturin): `minimize`, `PsoResult` and `import turboswarm`.
+- Visualization layer (`turboswarm.viz`): convergence, comparison and 2D animation.
