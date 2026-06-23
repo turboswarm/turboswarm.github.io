@@ -42,7 +42,10 @@ fn uniform_constructor_matches_explicit_bounds() {
         ContinuousSpace::uniform(3, -5.12, 5.12).bounds(),
         ContinuousSpace::new(vec![(-5.12, 5.12); 3]).bounds()
     );
-    assert_eq!(IntegerSpace::uniform(2, -10, 10).bounds(), &[(-10, 10), (-10, 10)]);
+    assert_eq!(
+        IntegerSpace::uniform(2, -10, 10).bounds(),
+        &[(-10, 10), (-10, 10)]
+    );
 }
 
 #[test]
@@ -105,7 +108,14 @@ fn integer_space_returns_integers() {
 
 #[test]
 fn constriction_converges_on_sphere() {
-    let res = run_with(sphere, ConstrictionVelocity::default(), GlobalBest::new(), 5.12, 2, 42);
+    let res = run_with(
+        sphere,
+        ConstrictionVelocity::default(),
+        GlobalBest::new(),
+        5.12,
+        2,
+        42,
+    );
     assert!(res.best_value < 1e-4, "value = {}", res.best_value);
 }
 
@@ -118,7 +128,14 @@ fn constriction_chi_matches_classic_value() {
 
 #[test]
 fn ring_topology_converges_on_sphere() {
-    let res = run_with(sphere, InertiaVelocity::new(0.729, 1.49445, 1.49445), Ring::lbest(), 5.12, 2, 42);
+    let res = run_with(
+        sphere,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        Ring::lbest(),
+        5.12,
+        2,
+        42,
+    );
     assert!(res.best_value < 1e-3, "value = {}", res.best_value);
 }
 
@@ -126,7 +143,14 @@ fn ring_topology_converges_on_sphere() {
 fn von_neumann_topology_converges_on_sphere() {
     // 40 particles => 5×8 grid covers the whole swarm.
     let topo = VonNeumann::square_for(40);
-    let res = run_with(sphere, InertiaVelocity::new(0.729, 1.49445, 1.49445), topo, 5.12, 2, 42);
+    let res = run_with(
+        sphere,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        topo,
+        5.12,
+        2,
+        42,
+    );
     assert!(res.best_value < 1e-3, "value = {}", res.best_value);
 }
 
@@ -161,7 +185,12 @@ fn fips_chi_matches_constriction() {
     // FIPS uses the same constriction factor as Clerc-Kennedy (φ=4.1).
     let f = FipsVelocity::default();
     let c = ConstrictionVelocity::default();
-    assert!((f.chi() - c.chi()).abs() < 1e-12, "χ_fips={}, χ_c={}", f.chi(), c.chi());
+    assert!(
+        (f.chi() - c.chi()).abs() < 1e-12,
+        "χ_fips={}, χ_c={}",
+        f.chi(),
+        c.chi()
+    );
 }
 
 #[test]
@@ -175,14 +204,35 @@ fn fips_is_reproducible() {
 #[test]
 fn random_topology_converges_on_sphere() {
     let topo = Random::new(3, 42);
-    let res = run_with(sphere, InertiaVelocity::new(0.729, 1.49445, 1.49445), topo, 5.12, 2, 42);
+    let res = run_with(
+        sphere,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        topo,
+        5.12,
+        2,
+        42,
+    );
     assert!(res.best_value < 1e-3, "value = {}", res.best_value);
 }
 
 #[test]
 fn random_topology_is_reproducible() {
-    let a = run_with(sphere, InertiaVelocity::new(0.729, 1.49445, 1.49445), Random::new(3, 1), 5.12, 3, 7);
-    let b = run_with(sphere, InertiaVelocity::new(0.729, 1.49445, 1.49445), Random::new(3, 1), 5.12, 3, 7);
+    let a = run_with(
+        sphere,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        Random::new(3, 1),
+        5.12,
+        3,
+        7,
+    );
+    let b = run_with(
+        sphere,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        Random::new(3, 1),
+        5.12,
+        3,
+        7,
+    );
     assert_eq!(a.best_value, b.best_value);
     assert_eq!(a.best_position, b.best_position);
 }
@@ -199,11 +249,20 @@ fn early_stopping_shortens_the_run() {
         tol: 1e-12,
         ..Default::default()
     };
-    let res = Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
-        .minimize(sphere);
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(sphere);
     // It should stop early (fewer than the 1000 allowed iterations) yet still
     // reach a good solution.
-    assert!(res.history.iterations() < 1000, "ran {} iters", res.history.iterations());
+    assert!(
+        res.history.iterations() < 1000,
+        "ran {} iters",
+        res.history.iterations()
+    );
     assert!(res.best_value < 1e-4, "value = {}", res.best_value);
 }
 
@@ -222,8 +281,13 @@ fn v_max_limits_velocity() {
     // Reconstruct trajectories: consecutive positions differ by the clamped
     // velocity, but clamping also interacts with bound-clamping, so we just
     // assert the run converges and completes (smoke test for the feature path).
-    let res = Pso::new(space, InertiaVelocity::new(0.9, 1.49445, 1.49445), GlobalBest::new(), params)
-        .minimize(sphere);
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.9, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(sphere);
     assert_eq!(res.history.iterations(), 50);
     assert!(res.best_value.is_finite());
 }
@@ -238,8 +302,13 @@ fn stops_on_target_value() {
         target: Some(1e-6),
         ..Default::default()
     };
-    let res = Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
-        .minimize(sphere);
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(sphere);
     assert_eq!(res.stop_reason, StopReason::Target);
     assert!(res.best_value <= 1e-6);
     assert!(res.history.iterations() < 10_000);
@@ -255,11 +324,20 @@ fn stops_on_evaluation_budget() {
         max_evals: Some(500),
         ..Default::default()
     };
-    let res = Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
-        .minimize(sphere);
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(sphere);
     assert_eq!(res.stop_reason, StopReason::MaxEvaluations);
     // 20 init + 20 per iteration; should stop shortly after crossing 500.
-    assert!(res.evaluations >= 500 && res.evaluations < 540, "evals = {}", res.evaluations);
+    assert!(
+        res.evaluations >= 500 && res.evaluations < 540,
+        "evals = {}",
+        res.evaluations
+    );
 }
 
 #[test]
@@ -283,12 +361,24 @@ fn boundary_strategies_keep_positions_in_bounds_and_converge() {
             bounds_handling: handling,
             ..Default::default()
         };
-        let res = Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
-            .minimize(sphere);
+        let res = Pso::new(
+            space,
+            InertiaVelocity::new(0.729, 1.49445, 1.49445),
+            GlobalBest::new(),
+            params,
+        )
+        .minimize(sphere);
         for &xi in &res.best_position {
-            assert!(xi >= -bound - 1e-9 && xi <= bound + 1e-9, "{handling:?}: {xi} out of bounds");
+            assert!(
+                xi >= -bound - 1e-9 && xi <= bound + 1e-9,
+                "{handling:?}: {xi} out of bounds"
+            );
         }
-        assert!(res.best_value < 1.0, "{handling:?}: value = {}", res.best_value);
+        assert!(
+            res.best_value < 1.0,
+            "{handling:?}: value = {}",
+            res.best_value
+        );
     }
 }
 
@@ -307,10 +397,18 @@ fn mopso_finds_pareto_front() {
     let res = Mopso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), params)
         .minimize(|x: &[f64]| vec![x[0] * x[0], (x[0] - 2.0).powi(2)]);
 
-    assert!(res.front.len() >= 10, "front too small: {}", res.front.len());
+    assert!(
+        res.front.len() >= 10,
+        "front too small: {}",
+        res.front.len()
+    );
     // Every Pareto-optimal x should lie in [0, 2].
     for s in &res.front {
-        assert!(s.position[0] > -0.1 && s.position[0] < 2.1, "x = {}", s.position[0]);
+        assert!(
+            s.position[0] > -0.1 && s.position[0] < 2.1,
+            "x = {}",
+            s.position[0]
+        );
     }
     // The archive must be mutually non-dominated.
     for a in &res.front {
@@ -334,16 +432,27 @@ fn mixed_space_respects_per_dimension_types() {
         seed: Some(7),
         ..Default::default()
     };
-    let res = Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
-        .minimize(|x: &[f64]| {
-            (x[0] - 1.5).powi(2) + (x[1] - 3.0).powi(2) + (x[2] - 1.0).powi(2)
-        });
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(|x: &[f64]| (x[0] - 1.5).powi(2) + (x[1] - 3.0).powi(2) + (x[2] - 1.0).powi(2));
     // Integer and binary dimensions must decode to whole values.
     assert_eq!(res.best_position[1], res.best_position[1].round());
     assert!(res.best_position[2] == 0.0 || res.best_position[2] == 1.0);
-    assert!((res.best_position[1] - 3.0).abs() < 1e-9, "int dim = {}", res.best_position[1]);
+    assert!(
+        (res.best_position[1] - 3.0).abs() < 1e-9,
+        "int dim = {}",
+        res.best_position[1]
+    );
     assert_eq!(res.best_position[2], 1.0);
-    assert!((res.best_position[0] - 1.5).abs() < 0.1, "real dim = {}", res.best_position[0]);
+    assert!(
+        (res.best_position[0] - 1.5).abs() < 0.1,
+        "real dim = {}",
+        res.best_position[0]
+    );
 }
 
 #[test]
@@ -356,11 +465,16 @@ fn callback_is_called_and_can_stop() {
         ..Default::default()
     };
     let mut calls = 0usize;
-    let res = Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
-        .minimize_with_callback(sphere, |info| {
-            calls += 1;
-            info.iteration < 9 // stop after the 10th iteration (index 9)
-        });
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize_with_callback(sphere, |info| {
+        calls += 1;
+        info.iteration < 9 // stop after the 10th iteration (index 9)
+    });
     assert_eq!(res.stop_reason, StopReason::Callback);
     assert_eq!(calls, 10);
     assert_eq!(res.history.iterations(), 10);
@@ -378,7 +492,12 @@ fn batch_matches_parallel_and_converges() {
             seed: Some(42),
             ..Default::default()
         };
-        Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
+        Pso::new(
+            space,
+            InertiaVelocity::new(0.729, 1.49445, 1.49445),
+            GlobalBest::new(),
+            params,
+        )
     };
     let batched = make().minimize_batch(|xs: &[Vec<f64>]| xs.iter().map(|x| sphere(x)).collect());
     let parallel = make().minimize_parallel(sphere);
@@ -398,8 +517,13 @@ fn parallel_converges_and_is_reproducible() {
             seed: Some(seed),
             ..Default::default()
         };
-        Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
-            .minimize_parallel(sphere)
+        Pso::new(
+            space,
+            InertiaVelocity::new(0.729, 1.49445, 1.49445),
+            GlobalBest::new(),
+            params,
+        )
+        .minimize_parallel(sphere)
     };
     let a = run(42);
     let b = run(42);
@@ -411,8 +535,22 @@ fn parallel_converges_and_is_reproducible() {
 #[test]
 fn variants_reach_optimum_on_same_function() {
     // Same function and seed, different variant: both must solve sphere.
-    let inertia = run_with(sphere, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), 5.12, 2, 2024);
-    let constr = run_with(sphere, ConstrictionVelocity::default(), GlobalBest::new(), 5.12, 2, 2024);
+    let inertia = run_with(
+        sphere,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        5.12,
+        2,
+        2024,
+    );
+    let constr = run_with(
+        sphere,
+        ConstrictionVelocity::default(),
+        GlobalBest::new(),
+        5.12,
+        2,
+        2024,
+    );
     assert!(inertia.best_value < 1e-4);
     assert!(constr.best_value < 1e-4);
 }

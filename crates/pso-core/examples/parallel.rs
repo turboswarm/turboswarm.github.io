@@ -33,7 +33,12 @@ fn main() {
             record_history: false,
             ..Default::default()
         };
-        Pso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), GlobalBest::new(), params)
+        Pso::new(
+            space,
+            InertiaVelocity::new(0.729, 1.49445, 1.49445),
+            GlobalBest::new(),
+            params,
+        )
     };
 
     let t0 = Instant::now();
@@ -44,8 +49,14 @@ fn main() {
     let par = make().minimize_parallel(expensive);
     let par_ms = t1.elapsed().as_secs_f64() * 1000.0;
 
-    println!("sequential : {seq_ms:8.1} ms   best = {:.3e}", seq.best_value);
-    println!("parallel   : {par_ms:8.1} ms   best = {:.3e}", par.best_value);
+    println!(
+        "sequential : {seq_ms:8.1} ms   best = {:.3e}",
+        seq.best_value
+    );
+    println!(
+        "parallel   : {par_ms:8.1} ms   best = {:.3e}",
+        par.best_value
+    );
     println!("speedup    : {:.2}x", seq_ms / par_ms);
     println!("(note: sequential uses asynchronous updates, parallel synchronous,");
     println!(" so the best values differ slightly — both are valid PSO schemes.)");

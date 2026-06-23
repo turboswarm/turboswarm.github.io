@@ -36,7 +36,10 @@ impl FipsVelocity {
     /// # Panics
     /// If `phi <= 4`, where the constriction formula is not defined.
     pub fn new(phi: f64) -> Self {
-        assert!(phi > 4.0, "FIPS uses constriction: requires φ > 4 (got {phi})");
+        assert!(
+            phi > 4.0,
+            "FIPS uses constriction: requires φ > 4 (got {phi})"
+        );
         let chi = 2.0 / (2.0 - phi - (phi * phi - 4.0 * phi).sqrt()).abs();
         Self { phi, chi }
     }

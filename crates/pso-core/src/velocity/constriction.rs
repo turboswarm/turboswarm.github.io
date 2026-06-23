@@ -34,10 +34,7 @@ impl ConstrictionVelocity {
     /// If `c1 + c2 <= 4`, where the constriction formula is not defined.
     pub fn new(c1: f64, c2: f64) -> Self {
         let phi = c1 + c2;
-        assert!(
-            phi > 4.0,
-            "constriction requires c1 + c2 > 4 (got {phi})"
-        );
+        assert!(phi > 4.0, "constriction requires c1 + c2 > 4 (got {phi})");
         let chi = 2.0 / (2.0 - phi - (phi * phi - 4.0 * phi).sqrt()).abs();
         Self { c1, c2, chi }
     }

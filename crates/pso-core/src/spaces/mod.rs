@@ -60,7 +60,11 @@ pub(crate) fn apply_boundary(
                 }
             }
             BoundaryHandling::Reinit => {
-                position[i] = if range <= 0.0 { lo } else { rng.gen_range(lo..=hi) };
+                position[i] = if range <= 0.0 {
+                    lo
+                } else {
+                    rng.gen_range(lo..=hi)
+                };
                 velocity[i] = 0.0;
             }
         }

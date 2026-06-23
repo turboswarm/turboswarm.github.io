@@ -17,7 +17,10 @@ pub struct Ring {
 impl Ring {
     /// Ring with `each_side` neighbors per side. Requires `each_side >= 1`.
     pub fn new(each_side: usize) -> Self {
-        assert!(each_side >= 1, "the ring needs at least 1 neighbor per side");
+        assert!(
+            each_side >= 1,
+            "the ring needs at least 1 neighbor per side"
+        );
         Self { each_side }
     }
 

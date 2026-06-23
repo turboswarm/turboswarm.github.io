@@ -113,7 +113,10 @@ struct Archive {
 
 impl Archive {
     fn new(max_size: usize) -> Self {
-        Self { members: Vec::new(), max_size }
+        Self {
+            members: Vec::new(),
+            max_size,
+        }
     }
 
     /// Inserts a candidate if it is not dominated, removing any members it
@@ -138,7 +141,11 @@ impl Archive {
             return cd;
         }
         let mut order: Vec<usize> = (0..self.members.len()).collect();
-        order.sort_by(|&a, &b| cd[b].partial_cmp(&cd[a]).unwrap_or(std::cmp::Ordering::Equal));
+        order.sort_by(|&a, &b| {
+            cd[b]
+                .partial_cmp(&cd[a])
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         order.truncate(self.max_size);
         order.sort_unstable();
         self.members = order.iter().map(|&i| self.members[i].clone()).collect();
@@ -166,7 +173,11 @@ where
 {
     /// Creates a multi-objective optimizer.
     pub fn new(space: S, velocity: V, params: MopsoParams) -> Self {
-        Self { space, velocity, params }
+        Self {
+            space,
+            velocity,
+            params,
+        }
     }
 
     /// Minimizes a vector-valued `objectives` function, returning the Pareto
@@ -211,8 +222,7 @@ where
             let crowding = archive.prune_and_crowding();
             // Snapshot the leader pool so it stays aligned with `crowding`
             // while the archive grows from this iteration's insertions.
-            let leaders: Vec<Vec<f64>> =
-                archive.members.iter().map(|(p, _)| p.clone()).collect();
+            let leaders: Vec<Vec<f64>> = archive.members.iter().map(|(p, _)| p.clone()).collect();
 
             for i in 0..self.params.n_particles {
                 // Leader: binary tournament favoring the less crowded region.

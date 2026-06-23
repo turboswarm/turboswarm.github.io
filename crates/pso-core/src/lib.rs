@@ -69,15 +69,11 @@ pub mod velocity;
 /// Convenient re-exports for common usage.
 pub mod prelude {
     pub use crate::history::History;
-    pub use crate::mopso::{Mopso, MopsoParams, MopsoResult, MoSolution};
+    pub use crate::mopso::{MoSolution, Mopso, MopsoParams, MopsoResult};
     pub use crate::params::PsoParams;
     pub use crate::pso::{IterationInfo, Pso, PsoResult, StopReason};
-    pub use crate::spaces::{
-        ContinuousSpace, Discretization, IntegerSpace, MixedSpace, VarType,
-    };
+    pub use crate::spaces::{ContinuousSpace, Discretization, IntegerSpace, MixedSpace, VarType};
     pub use crate::topology::{GlobalBest, Random, Ring, VonNeumann};
-    pub use crate::traits::{
-        BoundaryHandling, SearchSpace, Topology, UpdateContext, Velocity,
-    };
+    pub use crate::traits::{BoundaryHandling, SearchSpace, Topology, UpdateContext, Velocity};
     pub use crate::velocity::{ConstrictionVelocity, FipsVelocity, InertiaVelocity};
 }

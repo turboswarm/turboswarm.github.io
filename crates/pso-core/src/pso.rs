@@ -94,7 +94,12 @@ where
     /// Creates an optimizer from the space, the velocity rule, the
     /// topology and the parameters.
     pub fn new(space: S, velocity: V, topology: T, params: PsoParams) -> Self {
-        Self { space, velocity, topology, params }
+        Self {
+            space,
+            velocity,
+            topology,
+            params,
+        }
     }
 
     /// Runs the optimization, minimizing `objective`.
@@ -112,7 +117,11 @@ where
     /// `true` to continue or `false` to stop early (reported as
     /// [`StopReason::Callback`]). Useful for live logging, custom stopping or
     /// progress reporting.
-    pub fn minimize_with_callback<F, C>(&self, objective: F, mut callback: C) -> PsoResult<S::Scalar>
+    pub fn minimize_with_callback<F, C>(
+        &self,
+        objective: F,
+        mut callback: C,
+    ) -> PsoResult<S::Scalar>
     where
         F: FnMut(&[S::Scalar]) -> f64,
         C: FnMut(&IterationInfo) -> bool,
@@ -337,8 +346,11 @@ where
     {
         let space = &self.space;
         self.run_synchronous(|swarm| {
-            let decoded: Vec<Vec<S::Scalar>> =
-                swarm.particles.iter().map(|p| space.decode(&p.position)).collect();
+            let decoded: Vec<Vec<S::Scalar>> = swarm
+                .particles
+                .iter()
+                .map(|p| space.decode(&p.position))
+                .collect();
             objective(&decoded)
         })
     }
@@ -509,7 +521,12 @@ where
     /// Checks the budget-based stop conditions (target value, evaluation
     /// budget, wall-clock budget). Returns the reason to stop, if any. The
     /// stagnation criterion is handled by the caller (it needs mutable state).
-    fn budget_stop(&self, gbest_val: f64, evaluations: usize, start: Instant) -> Option<StopReason> {
+    fn budget_stop(
+        &self,
+        gbest_val: f64,
+        evaluations: usize,
+        start: Instant,
+    ) -> Option<StopReason> {
         if let Some(t) = self.params.target {
             if gbest_val <= t {
                 return Some(StopReason::Target);

@@ -26,7 +26,12 @@ pub struct InertiaVelocity {
 impl InertiaVelocity {
     /// Creates the rule with inertia weight `w` and coefficients `c1`, `c2`.
     pub fn new(w: f64, c1: f64, c2: f64) -> Self {
-        Self { w, c1, c2, w_end: None }
+        Self {
+            w,
+            c1,
+            c2,
+            w_end: None,
+        }
     }
 
     /// Enables linear decay of the inertia weight (chainable).

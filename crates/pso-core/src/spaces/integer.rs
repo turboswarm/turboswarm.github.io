@@ -127,6 +127,9 @@ impl SearchSpace for IntegerSpace {
     }
 
     fn span(&self) -> Vec<(f64, f64)> {
-        self.bounds.iter().map(|&(lo, hi)| (lo as f64, hi as f64)).collect()
+        self.bounds
+            .iter()
+            .map(|&(lo, hi)| (lo as f64, hi as f64))
+            .collect()
     }
 }

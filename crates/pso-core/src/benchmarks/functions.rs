@@ -43,10 +43,11 @@ pub fn rosenbrock(x: &[f64]) -> f64 {
 pub fn ackley(x: &[f64]) -> f64 {
     let n = x.len() as f64;
     let sum_sq: f64 = x.iter().map(|&xi| xi * xi).sum();
-    let sum_cos: f64 = x.iter().map(|&xi| (2.0 * std::f64::consts::PI * xi).cos()).sum();
-    -20.0 * (-0.2 * (sum_sq / n).sqrt()).exp() - (sum_cos / n).exp()
-        + 20.0
-        + std::f64::consts::E
+    let sum_cos: f64 = x
+        .iter()
+        .map(|&xi| (2.0 * std::f64::consts::PI * xi).cos())
+        .sum();
+    -20.0 * (-0.2 * (sum_sq / n).sqrt()).exp() - (sum_cos / n).exp() + 20.0 + std::f64::consts::E
 }
 
 /// Griewank: a product of cosines that creates many regular local minima.
@@ -68,19 +69,42 @@ pub fn griewank(x: &[f64]) -> f64 {
 /// f(x) = 418.9829·n − Σ xᵢ·sin(√|xᵢ|)
 pub fn schwefel(x: &[f64]) -> f64 {
     let n = x.len() as f64;
-    418.982_887_272_433_8 * n
-        - x.iter().map(|&xi| xi * xi.abs().sqrt().sin()).sum::<f64>()
+    418.982_887_272_433_8 * n - x.iter().map(|&xi| xi * xi.abs().sqrt().sin()).sum::<f64>()
 }
 
 /// Metadata for the Phase 1 functions.
-pub const SPHERE: Benchmark = Benchmark { name: "sphere", bound: 5.12, optimum_value: 0.0 };
-pub const RASTRIGIN: Benchmark = Benchmark { name: "rastrigin", bound: 5.12, optimum_value: 0.0 };
-pub const ROSENBROCK: Benchmark = Benchmark { name: "rosenbrock", bound: 2.048, optimum_value: 0.0 };
+pub const SPHERE: Benchmark = Benchmark {
+    name: "sphere",
+    bound: 5.12,
+    optimum_value: 0.0,
+};
+pub const RASTRIGIN: Benchmark = Benchmark {
+    name: "rastrigin",
+    bound: 5.12,
+    optimum_value: 0.0,
+};
+pub const ROSENBROCK: Benchmark = Benchmark {
+    name: "rosenbrock",
+    bound: 2.048,
+    optimum_value: 0.0,
+};
 
 /// Metadata for the Phase 2 functions.
-pub const ACKLEY: Benchmark = Benchmark { name: "ackley", bound: 32.768, optimum_value: 0.0 };
-pub const GRIEWANK: Benchmark = Benchmark { name: "griewank", bound: 600.0, optimum_value: 0.0 };
-pub const SCHWEFEL: Benchmark = Benchmark { name: "schwefel", bound: 500.0, optimum_value: 0.0 };
+pub const ACKLEY: Benchmark = Benchmark {
+    name: "ackley",
+    bound: 32.768,
+    optimum_value: 0.0,
+};
+pub const GRIEWANK: Benchmark = Benchmark {
+    name: "griewank",
+    bound: 600.0,
+    optimum_value: 0.0,
+};
+pub const SCHWEFEL: Benchmark = Benchmark {
+    name: "schwefel",
+    bound: 500.0,
+    optimum_value: 0.0,
+};
 
 /// All registered benchmarks with their metadata. It lets the
 /// visualization layer choose bounds and know the optimum without

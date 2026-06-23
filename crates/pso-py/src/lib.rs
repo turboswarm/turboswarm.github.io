@@ -106,7 +106,11 @@ fn build_velocity(name: &str, w: f64, c1: f64, c2: f64) -> PyResult<Box<dyn Velo
         // left the default c values (1.49445, sum 2.99), we use the classic
         // Clerc-Kennedy values (2.05) so the formula is well defined.
         "constriction" => {
-            let (c1, c2) = if c1 + c2 > 4.0 { (c1, c2) } else { (2.05, 2.05) };
+            let (c1, c2) = if c1 + c2 > 4.0 {
+                (c1, c2)
+            } else {
+                (2.05, 2.05)
+            };
             Ok(Box::new(ConstrictionVelocity::new(c1, c2)))
         }
         // FIPS distributes φ = c1 + c2 across all neighbors; it needs φ > 4.
@@ -191,7 +195,11 @@ fn build_boundary(name: &str) -> PyResult<BoundaryHandling> {
 
 /// Builds the topology by name. `n_particles` allows sizing the Von Neumann
 /// grid automatically; `seed` seeds the random topology's internal RNG.
-fn build_topology(name: &str, n_particles: usize, seed: Option<u64>) -> PyResult<Box<dyn Topology>> {
+fn build_topology(
+    name: &str,
+    n_particles: usize,
+    seed: Option<u64>,
+) -> PyResult<Box<dyn Topology>> {
     match name {
         "global" => Ok(Box::new(GlobalBest::new())),
         "ring" => Ok(Box::new(Ring::lbest())),
@@ -389,7 +397,20 @@ fn minimize(
         let types = build_var_types(&names)?;
         let space = MixedSpace::new(bounds, types);
         // Mixed positions decode to floats (integer dims are whole-valued).
-        run(py, space, vel, topo, params, objective, native_name, false, constraints, penalty, callback, vectorized)
+        run(
+            py,
+            space,
+            vel,
+            topo,
+            params,
+            objective,
+            native_name,
+            false,
+            constraints,
+            penalty,
+            callback,
+            vectorized,
+        )
     } else if integer || binary {
         // `binary` is the {0, 1} special case of an integer space.
         let int_bounds: Vec<(i64, i64)> = if binary {
@@ -401,10 +422,36 @@ fn minimize(
                 .collect()
         };
         let space = IntegerSpace::new(int_bounds);
-        run(py, space, vel, topo, params, objective, native_name, true, constraints, penalty, callback, vectorized)
+        run(
+            py,
+            space,
+            vel,
+            topo,
+            params,
+            objective,
+            native_name,
+            true,
+            constraints,
+            penalty,
+            callback,
+            vectorized,
+        )
     } else {
         let space = ContinuousSpace::new(bounds);
-        run(py, space, vel, topo, params, objective, native_name, false, constraints, penalty, callback, vectorized)
+        run(
+            py,
+            space,
+            vel,
+            topo,
+            params,
+            objective,
+            native_name,
+            false,
+            constraints,
+            penalty,
+            callback,
+            vectorized,
+        )
     }
 }
 
@@ -521,7 +568,10 @@ where
             let xs: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
             PyList::new_bound(py, xs).into_any()
         };
-        let base = match objective.call1(py, (args.clone(),)).and_then(|r| r.extract::<f64>(py)) {
+        let base = match objective
+            .call1(py, (args.clone(),))
+            .and_then(|r| r.extract::<f64>(py))
+        {
             Ok(val) => val,
             Err(e) => {
                 *call_error.borrow_mut() = Some(e);
@@ -530,7 +580,10 @@ where
         };
         let mut penalty_term = 0.0;
         for g in &constraints {
-            match g.call1(py, (args.clone(),)).and_then(|r| r.extract::<f64>(py)) {
+            match g
+                .call1(py, (args.clone(),))
+                .and_then(|r| r.extract::<f64>(py))
+            {
                 Ok(gv) => {
                     let viol = gv.max(0.0);
                     penalty_term += viol * viol;
@@ -641,7 +694,10 @@ where
             let xs: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
             PyList::new_bound(py, xs).into_any()
         };
-        match objective.call1(py, (args,)).and_then(|r| r.extract::<Vec<f64>>(py)) {
+        match objective
+            .call1(py, (args,))
+            .and_then(|r| r.extract::<Vec<f64>>(py))
+        {
             Ok(v) => {
                 n_obj.set(v.len());
                 v
@@ -663,7 +719,10 @@ where
         .map(|s| s.position.iter().map(|&v| v.to_f64()).collect())
         .collect();
     let objectives = result.front.iter().map(|s| s.objectives.clone()).collect();
-    Ok(PyParetoFront { positions, objectives })
+    Ok(PyParetoFront {
+        positions,
+        objectives,
+    })
 }
 
 /// Multi-objective optimization (MOPSO). Returns the Pareto front.
@@ -748,11 +807,28 @@ fn minimize_multi(
         let int_bounds: Vec<(i64, i64)> = if binary {
             vec![(0, 1); bounds.len()]
         } else {
-            bounds.iter().map(|&(lo, hi)| (lo.round() as i64, hi.round() as i64)).collect()
+            bounds
+                .iter()
+                .map(|&(lo, hi)| (lo.round() as i64, hi.round() as i64))
+                .collect()
         };
-        run_multi(py, IntegerSpace::new(int_bounds), vel, params, objective, true)
+        run_multi(
+            py,
+            IntegerSpace::new(int_bounds),
+            vel,
+            params,
+            objective,
+            true,
+        )
     } else {
-        run_multi(py, ContinuousSpace::new(bounds), vel, params, objective, false)
+        run_multi(
+            py,
+            ContinuousSpace::new(bounds),
+            vel,
+            params,
+            objective,
+            false,
+        )
     }
 }
 
