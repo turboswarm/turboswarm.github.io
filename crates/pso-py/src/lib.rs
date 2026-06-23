@@ -136,6 +136,46 @@ fn build_var_types(names: &[String]) -> PyResult<Vec<VarType>> {
         .collect()
 }
 
+/// Resolves the `bounds` argument: either a list of `(min, max)` pairs (one per
+/// dimension, so each dimension can have its own range) or a single
+/// `(min, max)` pair broadcast to `dim` dimensions.
+fn resolve_bounds(
+    py: Python<'_>,
+    bounds: &PyObject,
+    dim: Option<usize>,
+) -> PyResult<Vec<(f64, f64)>> {
+    // List of per-dimension pairs.
+    if let Ok(list) = bounds.extract::<Vec<(f64, f64)>>(py) {
+        if list.is_empty() {
+            return Err(PyValueError::new_err("bounds is empty"));
+        }
+        if let Some(d) = dim {
+            if d != list.len() {
+                return Err(PyValueError::new_err(format!(
+                    "dim={d} does not match the {} bound pairs given",
+                    list.len()
+                )));
+            }
+        }
+        return Ok(list);
+    }
+    // Single pair broadcast to `dim` dimensions.
+    if let Ok(pair) = bounds.extract::<(f64, f64)>(py) {
+        match dim {
+            Some(d) if d >= 1 => return Ok(vec![pair; d]),
+            Some(_) => return Err(PyValueError::new_err("dim must be >= 1")),
+            None => {
+                return Err(PyValueError::new_err(
+                    "with a single (min, max) bound, pass dim=<number of dimensions>",
+                ))
+            }
+        }
+    }
+    Err(PyValueError::new_err(
+        "bounds must be a list of (min, max) pairs, or a single (min, max) pair with dim=<n>",
+    ))
+}
+
 /// Maps a boundary-handling name to its strategy.
 fn build_boundary(name: &str) -> PyResult<BoundaryHandling> {
     match name {
@@ -172,8 +212,9 @@ fn build_topology(name: &str, n_particles: usize, seed: Option<u64>) -> PyResult
 ///     objective: callable ``f(list[float]) -> float`` to minimize, OR the name
 ///         (str) of a native benchmark: ``"sphere"``, ``"rastrigin"``,
 ///         ``"rosenbrock"``, ``"ackley"``, ``"griewank"``, ``"schwefel"``.
-///     bounds (list[tuple[float, float]]): ``(min, max)`` bounds per dimension.
-///         Its length sets the problem dimension.
+///     bounds: either a list of ``(min, max)`` pairs (one per dimension, so each
+///         dimension can have its own range) or a single ``(min, max)`` pair
+///         used for every dimension (then pass ``dim``).
 ///     integer (bool): if ``True``, optimizes over integer variables (the
 ///         position is discretized by rounding when evaluated). Defaults to ``False``.
 ///     n_particles (int): swarm size. Defaults to 30.
@@ -227,6 +268,8 @@ fn build_topology(name: &str, n_particles: usize, seed: Option<u64>) -> PyResult
 ///         problem — each ``"real"``, ``"integer"`` or ``"binary"`` (same
 ///         length as ``bounds``). Integer/binary dimensions come back as
 ///         whole-valued floats. Takes precedence over ``integer``/``binary``.
+///     dim (int | None): number of dimensions when ``bounds`` is a single
+///         ``(min, max)`` pair (ignored when ``bounds`` is already a list).
 ///
 /// Returns:
 ///     PsoResult: with ``best_position``, ``best_value``, ``convergence`` and
@@ -272,11 +315,12 @@ fn build_topology(name: &str, n_particles: usize, seed: Option<u64>) -> PyResult
     bounds_handling = "clamp",
     vectorized = false,
     var_types = None,
+    dim = None,
 ))]
 fn minimize(
     py: Python<'_>,
     objective: PyObject,
-    bounds: Vec<(f64, f64)>,
+    bounds: PyObject,
     integer: bool,
     n_particles: usize,
     max_iter: usize,
@@ -300,7 +344,9 @@ fn minimize(
     bounds_handling: &str,
     vectorized: bool,
     var_types: Option<Vec<String>>,
+    dim: Option<usize>,
 ) -> PyResult<PyPsoResult> {
+    let bounds = resolve_bounds(py, &bounds, dim)?;
     let params = PsoParams {
         w,
         c1,
@@ -657,11 +703,12 @@ where
     binary = false,
     var_types = None,
     mutation_rate = 0.1,
+    dim = None,
 ))]
 fn minimize_multi(
     py: Python<'_>,
     objective: PyObject,
-    bounds: Vec<(f64, f64)>,
+    bounds: PyObject,
     n_particles: usize,
     max_iter: usize,
     archive_size: usize,
@@ -674,12 +721,14 @@ fn minimize_multi(
     binary: bool,
     var_types: Option<Vec<String>>,
     mutation_rate: f64,
+    dim: Option<usize>,
 ) -> PyResult<PyParetoFront> {
     if velocity == "fips" {
         return Err(PyValueError::new_err(
             "MOPSO needs a single-leader velocity ('inertia' or 'constriction'); 'fips' does not apply",
         ));
     }
+    let bounds = resolve_bounds(py, &bounds, dim)?;
     let vel = build_velocity(velocity, w, c1, c2)?;
     let params = MopsoParams {
         n_particles,

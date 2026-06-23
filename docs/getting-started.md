@@ -15,7 +15,16 @@ print(r.best_value)        # ~0.0
 print(r.best_position)     # ~[0.0, 0.0]
 ```
 
-`bounds` is a list of `(min, max)` pairs; its length is the problem dimension.
+`bounds` defines the search box. Two equivalent ways:
+
+```python
+# One (min, max) per dimension — each dimension can have its own range:
+pso.minimize(f, bounds=[(-5, 5), (0, 100)])      # 2-D, different ranges
+
+# A single (min, max) for every dimension — pass dim:
+pso.minimize(f, bounds=(-5.12, 5.12), dim=10)    # 10-D, same range
+```
+
 The `seed` makes the run reproducible.
 
 ## 2. Your own objective

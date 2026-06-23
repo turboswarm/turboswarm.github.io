@@ -37,6 +37,15 @@ where
 }
 
 #[test]
+fn uniform_constructor_matches_explicit_bounds() {
+    assert_eq!(
+        ContinuousSpace::uniform(3, -5.12, 5.12).bounds(),
+        ContinuousSpace::new(vec![(-5.12, 5.12); 3]).bounds()
+    );
+    assert_eq!(IntegerSpace::uniform(2, -10, 10).bounds(), &[(-10, 10), (-10, 10)]);
+}
+
+#[test]
 fn sphere_converges_near_zero() {
     let res = run_continuous(sphere, 5.12, 2, 42);
     assert!(res.best_value < 1e-4, "value = {}", res.best_value);

@@ -32,6 +32,9 @@ this project follows [Semantic Versioning](https://semver.org/).
   visualize a 2-objective front.
 - **Mixed variable types**: `MixedSpace` (Rust) and `var_types=` (Python) allow
   a per-dimension choice of `real`, `integer` or `binary` in one problem.
+- **Friendlier bounds**: `minimize`/`minimize_multi` accept either a list of
+  per-dimension `(min, max)` pairs or a single `(min, max)` pair with `dim=N`.
+  Rust adds `ContinuousSpace::uniform(dim, lo, hi)` and `IntegerSpace::uniform`.
 - **Batched/vectorized objective**: `Pso::minimize_batch` in Rust and
   `vectorized=True` in Python evaluate the whole swarm per call. The Python path
   passes the swarm as a contiguous **NumPy array** (via the `numpy` crate) and

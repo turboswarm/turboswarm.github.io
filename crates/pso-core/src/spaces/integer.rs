@@ -56,6 +56,12 @@ impl IntegerSpace {
         self
     }
 
+    /// Convenience: a `dim`-dimensional integer box with the same `(lo, hi)`
+    /// range on every dimension.
+    pub fn uniform(dim: usize, lo: i64, hi: i64) -> Self {
+        Self::new(vec![(lo, hi); dim])
+    }
+
     /// The integer `(min, max)` bounds per dimension.
     pub fn bounds(&self) -> &[(i64, i64)] {
         &self.bounds

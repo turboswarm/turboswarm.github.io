@@ -20,6 +20,13 @@ impl ContinuousSpace {
         Self { bounds }
     }
 
+    /// Convenience: a `dim`-dimensional box with the same `(lo, hi)` range on
+    /// every dimension. `ContinuousSpace::uniform(2, -5.12, 5.12)` is the same
+    /// as `ContinuousSpace::new(vec![(-5.12, 5.12); 2])`.
+    pub fn uniform(dim: usize, lo: f64, hi: f64) -> Self {
+        Self::new(vec![(lo, hi); dim])
+    }
+
     /// The `(min, max)` bounds per dimension.
     pub fn bounds(&self) -> &[(f64, f64)] {
         &self.bounds
