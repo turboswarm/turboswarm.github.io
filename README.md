@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="turboswarm" width="128">
+</p>
+
 # turboswarm
 
 A general-purpose, extensible **Particle Swarm Optimization (PSO)** library with
