@@ -5,7 +5,10 @@ use pso_core::benchmarks::rastrigin;
 use pso_core::prelude::*;
 
 fn main() {
-    let space = ContinuousSpace::new(vec![(-5.12, 5.12); 2]);
+    // A 2-D box with the same range on every dimension.
+    // (For different ranges per dimension, use
+    //  `ContinuousSpace::new(vec![(-5.0, 5.0), (0.0, 100.0)])`.)
+    let space = ContinuousSpace::uniform(2, -5.12, 5.12);
     let velocity = InertiaVelocity::new(0.9, 1.49445, 1.49445).with_decay(0.4);
     let params = PsoParams {
         n_particles: 40,

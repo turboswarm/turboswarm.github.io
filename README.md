@@ -56,7 +56,7 @@ cargo run --example basic -p pso-core
 use pso_core::prelude::*;
 use pso_core::benchmarks::rastrigin;
 
-let space = ContinuousSpace::new(vec![(-5.12, 5.12); 2]);
+let space = ContinuousSpace::uniform(2, -5.12, 5.12);   // same range on every dim
 let velocity = InertiaVelocity::new(0.9, 1.49445, 1.49445).with_decay(0.4);
 let params = PsoParams { seed: Some(42), ..Default::default() };
 
@@ -78,16 +78,17 @@ python examples/quickstart.py
 ```python
 import turboswarm as pso
 
-# Native benchmark (runs in Rust, without the GIL)
-r = pso.minimize("rastrigin", bounds=[(-5.12, 5.12)] * 2, seed=42)
+# Native benchmark (runs in Rust, without the GIL).
+# bounds: a single (min, max) for every dimension -> pass dim
+r = pso.minimize("rastrigin", bounds=(-5.12, 5.12), dim=2, seed=42)
 
 # Variant and topology by name
-r = pso.minimize("ackley", bounds=[(-32.768, 32.768)] * 2,
+r = pso.minimize("ackley", bounds=(-32.768, 32.768), dim=2,
                  velocity="fips", topology="ring", seed=1)
 
-# Your own function, or integer variables
-r = pso.minimize(lambda x: sum(xi**2 for xi in x), bounds=[(-5, 5)] * 3)
-r = pso.minimize(f, bounds=[(-10, 10)] * 2, integer=True)
+# Or one (min, max) per dimension (different ranges); your own fn; integers
+r = pso.minimize(lambda x: (x[0] - 1) ** 2 + (x[1] - 50) ** 2, bounds=[(-5, 5), (0, 100)])
+r = pso.minimize(f, bounds=(-10, 10), dim=2, integer=True)
 
 print(r.best_position, r.best_value)
 ```

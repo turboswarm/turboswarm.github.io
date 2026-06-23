@@ -36,7 +36,7 @@
 //! ```
 //! use pso_core::prelude::*;
 //!
-//! let space = ContinuousSpace::new(vec![(-5.12, 5.12); 2]);
+//! let space = ContinuousSpace::uniform(2, -5.12, 5.12);
 //! let velocity = InertiaVelocity::new(0.729, 1.49445, 1.49445);
 //! let params = PsoParams { seed: Some(42), ..Default::default() };
 //!
