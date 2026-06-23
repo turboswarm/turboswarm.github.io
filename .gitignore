@@ -10,6 +10,7 @@ __pycache__/
 dist/
 *.egg-info/
 .DS_Store
+*.log
 
 # Generated documentation (rebuild with scripts/build-docs.sh)
 site/
