@@ -132,6 +132,22 @@ available on docs.rs.
 builds the package (so `mkdocstrings` can import it) and deploys on every push
 to `main`. Enable it once in **Settings → Pages → Source: GitHub Actions**.
 
+## Releasing
+
+CI runs `cargo fmt`/`clippy`/tests and the Python tests on every push and PR
+([`ci.yml`](.github/workflows/ci.yml)). Pushing a version tag publishes:
+
+```bash
+git tag v0.1.0 && git push --tags
+```
+
+- **PyPI** (`turboswarm`): [`release-pypi.yml`](.github/workflows/release-pypi.yml)
+  builds abi3 wheels (one per platform, CPython ≥ 3.9) + sdist and uploads via
+  PyPI Trusted Publishing — configure a publisher for the project, or add a
+  `PYPI_API_TOKEN` secret.
+- **crates.io** (`pso-core`): [`release-crates.yml`](.github/workflows/release-crates.yml)
+  runs `cargo publish` — needs a `CARGO_REGISTRY_TOKEN` secret.
+
 ## Structure
 
 ```

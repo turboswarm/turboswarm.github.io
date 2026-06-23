@@ -10,5 +10,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pso-core = { path = "../pso-core" }
-pyo3 = { version = "0.22", features = ["extension-module"] }
+# abi3-py39: build a single wheel compatible with CPython >= 3.9.
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"] }
 numpy = "0.22"   # zero-copy NumPy arrays for the vectorized objective path
