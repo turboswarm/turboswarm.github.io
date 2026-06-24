@@ -34,14 +34,23 @@ Check off each task as you progress. Phase 1 is already done and verified.
 - [x] Configurable velocity limit (`v_max`).
 - [x] Early stopping criteria (`patience` + `tol`).
 
-## 🟢 Phase 5 — Reaching (and passing) feature parity with other libraries
+## ✅ Phase 5 — Reaching (and passing) feature parity with other libraries
 - [x] Inequality constraints (penalty method) in the Python `minimize`
       (`constraints=`, `penalty=`).
 - [x] Parallel objective evaluation from Rust (`minimize_parallel`, `rayon`).
 - [x] Binary optimization helper (`binary=True` in the Python `minimize`).
-- [ ] `Pyramid` topology (Delaunay-based). `pyswarms` has this. Deliberately
-      deferred: it needs a computational-geometry dependency for a niche
-      topology that rarely beats Von Neumann or ring.
+- [~] `Pyramid` topology (Delaunay-based) — **WON'T DO**. Architecturally
+      possible (the `Topology` trait already receives the swarm, so a dynamic
+      position-based topology is supported), but the cost/benefit is clearly
+      negative: Delaunay is only practical in 2D/3D — the pure-Rust crates
+      (`delaunator`, `spade`) are 2D-only and an n-D triangulation needs
+      `qhull` (C++ FFI), which the core forbids and which explodes
+      combinatorially, so the topology would be unusable for the higher-
+      dimensional problems PSO targets. It would also require recomputing and
+      caching the triangulation each iteration via interior mutability (the
+      `neighbors(&self, …)` signature is immutable), and in practice it rarely
+      beats ring or Von Neumann. The global/ring/Von Neumann/random set already
+      covers the standard topology spectrum.
 - [x] NumPy interop for `vectorized=True` (via the `numpy` crate): the swarm is
       passed as a contiguous NumPy array and results read back as a slice.
       Matches `pyswarms` on expensive objectives; cheap objectives still favor a
