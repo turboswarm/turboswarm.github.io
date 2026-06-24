@@ -393,6 +393,7 @@ fn mopso_finds_pareto_front() {
         archive_size: 50,
         seed: Some(42),
         mutation_rate: 0.1,
+        grid_divisions: None,
     };
     let res = Mopso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), params)
         .minimize(|x: &[f64]| vec![x[0] * x[0], (x[0] - 2.0).powi(2)]);
@@ -457,6 +458,7 @@ fn mopso_hypervolume_rewards_a_converged_front() {
         archive_size: 50,
         seed: Some(42),
         mutation_rate: 0.1,
+        grid_divisions: None,
     };
     let res = Mopso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), params).minimize(f);
 
@@ -473,6 +475,56 @@ fn mopso_hypervolume_rewards_a_converged_front() {
 
     // The auto-reference path (nadir of the front) is also well-defined.
     assert!(res.hypervolume(None) > 0.0);
+}
+
+#[test]
+fn mopso_grid_archive_produces_a_valid_front() {
+    use turboswarm_core::mopso::{dominates, Mopso, MopsoParams};
+    let space = ContinuousSpace::new(vec![(-5.0, 5.0)]);
+    let f = |x: &[f64]| vec![x[0] * x[0], (x[0] - 2.0).powi(2)];
+    let run = || {
+        let params = MopsoParams {
+            n_particles: 80,
+            max_iterations: 80,
+            archive_size: 30,
+            seed: Some(7),
+            mutation_rate: 0.1,
+            grid_divisions: Some(20),
+        };
+        Mopso::new(
+            space.clone(),
+            InertiaVelocity::new(0.729, 1.49445, 1.49445),
+            params,
+        )
+        .minimize(f)
+    };
+
+    let res = run();
+    // Archive respects its cap and the Pareto-optimal x lies in [0, 2].
+    assert!(res.front.len() >= 5 && res.front.len() <= 30);
+    for s in &res.front {
+        assert!(
+            s.position[0] > -0.1 && s.position[0] < 2.1,
+            "x = {}",
+            s.position[0]
+        );
+    }
+    // Mutually non-dominated.
+    for a in &res.front {
+        for b in &res.front {
+            assert!(!dominates(&a.objectives, &b.objectives) || a.objectives == b.objectives);
+        }
+    }
+    // The grid archive covers meaningful hypervolume and is reproducible.
+    let reference = [8.0, 8.0];
+    assert!(res.hypervolume(Some(&reference)) > 0.0);
+    let again = run();
+    let objs_a: Vec<_> = res.front.iter().map(|s| s.objectives.clone()).collect();
+    let objs_b: Vec<_> = again.front.iter().map(|s| s.objectives.clone()).collect();
+    assert_eq!(
+        objs_a, objs_b,
+        "grid MOPSO must be reproducible with a fixed seed"
+    );
 }
 
 #[test]

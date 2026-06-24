@@ -6,6 +6,11 @@ this project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Grid-based MOPSO archive** (Coello's adaptive hypercube grid): pass
+  `grid_divisions=d` to `minimize_multi` (or set `MopsoParams.grid_divisions`) to
+  keep the Pareto archive diverse with an adaptive grid of `d` cells per
+  objective instead of the crowding-distance default — pruning drops members
+  from the most crowded cell and leaders are drawn towards sparser cells.
 - **Equality constraints and a repair operator** in `minimize`:
   `equality_constraints=` takes callables `h(x)` (feasible when `h(x) == 0`) and
   adds a quadratic penalty `penalty * sum(h(x)**2)`; `repair=` takes an operator

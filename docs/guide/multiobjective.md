@@ -35,7 +35,22 @@ here is `x ∈ [0, 2]`, and the front spans from `(f1≈0, f2≈4·dim)` to
 | `archive_size` | maximum size of the returned front (pruned by crowding distance) |
 | `velocity` | `"inertia"` or `"constriction"` — single-leader rules (FIPS does not apply) |
 | `mutation_rate` | turbulence strength in `[0, 1]` (default `0.1`); improves front spread, `0` disables |
+| `grid_divisions` | archive diversity: `None` (default) = crowding distance; an int `d` = Coello's adaptive grid with `d` cells per objective |
 | `integer`, `binary`, `var_types` | same as in `minimize` (mixed problems supported) |
+
+### Archive diversity: crowding vs grid
+
+The external archive is kept diverse in one of two ways. By default it keeps the
+most isolated members by **NSGA-II crowding distance**. Passing
+`grid_divisions=d` switches to the **adaptive hypercube grid** from the original
+MOPSO paper (Coello Coello & Lechuga): objective space is split into `d` cells
+per objective (re-fitted to the archive each iteration); pruning removes members
+from the most crowded cell and leaders are drawn towards sparser cells. The grid
+tends to spread the front more evenly, especially for larger archives.
+
+```python
+front = pso.minimize_multi(objectives, bounds=bounds, grid_divisions=30, seed=0)
+```
 
 ## Visualizing the front
 

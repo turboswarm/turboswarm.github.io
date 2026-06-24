@@ -879,6 +879,12 @@ where
 ///         meaning as in ``minimize``.
 ///     mutation_rate (float): turbulence strength in [0, 1] (default 0.1);
 ///         improves front spread. ``0`` disables it.
+///     grid_divisions (int | None): archive diversity strategy. ``None``
+///         (default) keeps the most isolated members by crowding distance;
+///         an int ``d`` uses Coello's adaptive hypercube grid with ``d``
+///         divisions per objective (pruning drops members from the most crowded
+///         cell, leaders are drawn towards sparser cells), which tends to spread
+///         the front more evenly.
 ///
 /// Returns:
 ///     ParetoFront: with ``positions`` and ``objectives``.
@@ -900,6 +906,7 @@ where
     var_types = None,
     mutation_rate = 0.1,
     dim = None,
+    grid_divisions = None,
 ))]
 fn minimize_multi(
     py: Python<'_>,
@@ -918,6 +925,7 @@ fn minimize_multi(
     var_types: Option<Vec<String>>,
     mutation_rate: f64,
     dim: Option<usize>,
+    grid_divisions: Option<usize>,
 ) -> PyResult<PyParetoFront> {
     if velocity == "fips" {
         return Err(PyValueError::new_err(
@@ -932,6 +940,7 @@ fn minimize_multi(
         archive_size,
         seed,
         mutation_rate,
+        grid_divisions,
     };
 
     if let Some(names) = var_types {

@@ -147,6 +147,18 @@ def test_multi_objective_pareto_front():
             assert not dominates(a, b) or a == b
 
 
+def test_mopso_grid_archive():
+    f = lambda x: [sum(xi ** 2 for xi in x), sum((xi - 2) ** 2 for xi in x)]
+    kw = dict(bounds=(-5, 5), dim=2, seed=42, n_particles=80, max_iter=80, archive_size=30)
+    front = pso.minimize_multi(f, grid_divisions=20, **kw)
+    assert 1 <= len(front) <= 30
+    # Reproducible with a fixed seed.
+    again = pso.minimize_multi(f, grid_divisions=20, **kw)
+    assert front.objectives == again.objectives
+    # Covers meaningful hypervolume, like the crowding default.
+    assert front.hypervolume([20.0, 20.0]) > 0.0
+
+
 def test_benchmark_info():
     bound, optimum = pso.benchmark_info("ackley")
     assert bound == 32.768 and optimum == 0.0

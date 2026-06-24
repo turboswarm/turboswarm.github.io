@@ -77,6 +77,7 @@ Check off each task as you progress. Phase 1 is already done and verified.
 - [x] MOPSO turbulence/mutation operator (`mutation_rate`).
 - [x] MOPSO hypervolume metric (`mopso::hypervolume`, WFG algorithm;
       `ParetoFront.hypervolume` in Python).
-- [ ] MOPSO refinements: grid-based archive (Coello's).
+- [x] MOPSO grid-based archive (Coello's adaptive hypercube grid):
+      `grid_divisions=` in `minimize_multi` / `MopsoParams.grid_divisions`.
 - [x] Equality constraints (`equality_constraints=`, quadratic penalty) and a
       `repair=` operator in the Python `minimize`.

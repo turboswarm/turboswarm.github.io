@@ -9,6 +9,8 @@
 //! Use a single-leader velocity rule (inertia or constriction); FIPS, which
 //! needs the whole neighborhood, does not apply here.
 
+use std::collections::HashMap;
+
 use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -22,7 +24,7 @@ pub struct MopsoParams {
     /// Number of iterations.
     pub max_iterations: usize,
     /// Maximum size of the external archive (the returned front is pruned to
-    /// this by crowding distance).
+    /// this size).
     pub archive_size: usize,
     /// RNG seed; fix it for reproducible runs.
     pub seed: Option<u64>,
@@ -31,6 +33,13 @@ pub struct MopsoParams {
     /// window that shrinks over time. `0` disables it. Improves front spread
     /// and helps escape local fronts.
     pub mutation_rate: f64,
+    /// Archive diversity strategy. `None` (default) keeps the most isolated
+    /// members by **NSGA-II crowding distance**. `Some(d)` uses Coello's
+    /// **adaptive hypercube grid** with `d` divisions per objective: pruning
+    /// drops members from the most crowded cell, and leaders are drawn towards
+    /// sparser cells. The grid is the mechanism from the original MOPSO paper;
+    /// it tends to spread the front more evenly, especially with many members.
+    pub grid_divisions: Option<usize>,
 }
 
 impl Default for MopsoParams {
@@ -41,6 +50,7 @@ impl Default for MopsoParams {
             archive_size: 100,
             seed: None,
             mutation_rate: 0.1,
+            grid_divisions: None,
         }
     }
 }
@@ -184,6 +194,51 @@ fn limit_set(pl: &[Vec<f64>], k: usize) -> Vec<Vec<f64>> {
         .collect()
 }
 
+/// Locates each objective vector in an adaptive hypercube grid of `divisions`
+/// cells per objective, sized to the current min/max of `objs` along each
+/// objective. Returns the integer cell coordinate of every point. Coello's
+/// adaptive grid: the bounds follow the archive, so the cells always cover it.
+fn grid_cells(objs: &[Vec<f64>], divisions: usize) -> Vec<Vec<usize>> {
+    if objs.is_empty() {
+        return Vec::new();
+    }
+    let m = objs[0].len();
+    let div = divisions.max(1);
+    let mut lo = vec![f64::INFINITY; m];
+    let mut hi = vec![f64::NEG_INFINITY; m];
+    for o in objs {
+        for k in 0..m {
+            lo[k] = lo[k].min(o[k]);
+            hi[k] = hi[k].max(o[k]);
+        }
+    }
+    objs.iter()
+        .map(|o| {
+            (0..m)
+                .map(|k| {
+                    let span = hi[k] - lo[k];
+                    if span <= 0.0 {
+                        0
+                    } else {
+                        let idx = ((o[k] - lo[k]) / span * div as f64) as usize;
+                        idx.min(div - 1)
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
+/// Cell populations: how many members share each member's grid cell, aligned by
+/// index.
+fn cell_populations(cells: &[Vec<usize>]) -> Vec<usize> {
+    let mut counts: HashMap<&Vec<usize>, usize> = HashMap::new();
+    for c in cells {
+        *counts.entry(c).or_insert(0) += 1;
+    }
+    cells.iter().map(|c| counts[c]).collect()
+}
+
 /// NSGA-II crowding distance for a set of objective vectors (larger = more
 /// isolated, hence more valuable for diversity).
 fn crowding_distance(objs: &[Vec<f64>]) -> Vec<f64> {
@@ -217,13 +272,17 @@ fn crowding_distance(objs: &[Vec<f64>]) -> Vec<f64> {
 struct Archive {
     members: Vec<(Vec<f64>, Vec<f64>)>, // (raw position, objectives)
     max_size: usize,
+    /// `Some(d)` selects Coello's adaptive grid (with `d` divisions per
+    /// objective); `None` uses crowding distance.
+    grid_divisions: Option<usize>,
 }
 
 impl Archive {
-    fn new(max_size: usize) -> Self {
+    fn new(max_size: usize, grid_divisions: Option<usize>) -> Self {
         Self {
             members: Vec::new(),
             max_size,
+            grid_divisions,
         }
     }
 
@@ -240,8 +299,17 @@ impl Archive {
         self.members.push((pos.to_vec(), obj.to_vec()));
     }
 
-    /// Prunes to `max_size` keeping the most isolated (largest crowding).
-    /// Returns the crowding distances of the kept members, aligned by index.
+    /// Prunes to `max_size` and returns a per-member **sparsity score** (larger
+    /// = more isolated, hence preferred as a leader), aligned by index. Uses the
+    /// crowding distance or Coello's grid depending on `grid_divisions`.
+    fn prune_and_scores(&mut self) -> Vec<f64> {
+        match self.grid_divisions {
+            None => self.prune_and_crowding(),
+            Some(div) => self.prune_and_grid(div),
+        }
+    }
+
+    /// Prunes keeping the largest crowding distance; returns those distances.
     fn prune_and_crowding(&mut self) -> Vec<f64> {
         let objs: Vec<Vec<f64>> = self.members.iter().map(|(_, o)| o.clone()).collect();
         let cd = crowding_distance(&objs);
@@ -259,6 +327,25 @@ impl Archive {
         self.members = order.iter().map(|&i| self.members[i].clone()).collect();
         let objs: Vec<Vec<f64>> = self.members.iter().map(|(_, o)| o.clone()).collect();
         crowding_distance(&objs)
+    }
+
+    /// Coello's adaptive-grid pruning: repeatedly drop a member from the most
+    /// crowded hypercube until within `max_size`. Returns `1 / cell_population`
+    /// per surviving member, so members in sparser cells score higher.
+    fn prune_and_grid(&mut self, div: usize) -> Vec<f64> {
+        while self.members.len() > self.max_size {
+            let objs: Vec<Vec<f64>> = self.members.iter().map(|(_, o)| o.clone()).collect();
+            let pops = cell_populations(&grid_cells(&objs, div));
+            // Drop a member from the most populated cell (ties: the last one,
+            // chosen deterministically to keep runs reproducible).
+            let victim = (0..pops.len()).max_by_key(|&i| pops[i]).unwrap();
+            self.members.remove(victim);
+        }
+        let objs: Vec<Vec<f64>> = self.members.iter().map(|(_, o)| o.clone()).collect();
+        cell_populations(&grid_cells(&objs, div))
+            .into_iter()
+            .map(|p| 1.0 / p as f64)
+            .collect()
     }
 }
 
@@ -316,7 +403,7 @@ where
         let mut pbest_pos = positions.clone();
         let mut pbest_obj = objs.clone();
 
-        let mut archive = Archive::new(self.params.archive_size);
+        let mut archive = Archive::new(self.params.archive_size, self.params.grid_divisions);
         for (p, o) in positions.iter().zip(&objs) {
             archive.insert(p, o);
         }
@@ -327,17 +414,18 @@ where
 
         // --- Main loop ---
         for iter in 0..self.params.max_iterations {
-            let crowding = archive.prune_and_crowding();
-            // Snapshot the leader pool so it stays aligned with `crowding`
+            let scores = archive.prune_and_scores();
+            // Snapshot the leader pool so it stays aligned with `scores`
             // while the archive grows from this iteration's insertions.
             let leaders: Vec<Vec<f64>> = archive.members.iter().map(|(p, _)| p.clone()).collect();
 
             for i in 0..self.params.n_particles {
-                // Leader: binary tournament favoring the less crowded region.
+                // Leader: binary tournament favoring the sparser region (higher
+                // crowding distance, or sparser grid cell).
                 let leader_pos = {
                     let a = rng.gen_range(0..leaders.len());
                     let b = rng.gen_range(0..leaders.len());
-                    if crowding[a] >= crowding[b] {
+                    if scores[a] >= scores[b] {
                         leaders[a].clone()
                     } else {
                         leaders[b].clone()
@@ -397,7 +485,7 @@ where
             }
         }
 
-        archive.prune_and_crowding();
+        archive.prune_and_scores();
         let front = archive
             .members
             .into_iter()
