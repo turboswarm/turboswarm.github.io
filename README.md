@@ -142,9 +142,8 @@ git tag v0.1.0 && git push --tags
 ```
 
 - **PyPI** (`turboswarm`): [`release-pypi.yml`](.github/workflows/release-pypi.yml)
-  builds abi3 wheels (one per platform, CPython ≥ 3.9) + sdist and uploads via
-  PyPI Trusted Publishing — configure a publisher for the project, or add a
-  `PYPI_API_TOKEN` secret.
+  builds abi3 wheels (one per platform, CPython ≥ 3.9) + sdist and uploads using
+  the `PYPI_API_TOKEN` secret.
 - **crates.io** (`pso-core`): [`release-crates.yml`](.github/workflows/release-crates.yml)
   runs `cargo publish` — needs a `CARGO_REGISTRY_TOKEN` secret.
 
