@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "turboswarm: A general-purpose, extensible Particle Swarm Optimization library with a Rust core"
+type: software
+authors:
+  - family-names: "Salmeron"
+    given-names: "Jose L."
+    orcid: "https://orcid.org/0000-0001-7811-3716"
+    affiliation: "CUNEF Universidad"
+repository-code: "https://github.com/turboswarm/turboswarm.github.io"
+url: "https://turboswarm.github.io"
+license: MIT
+version: 0.2.1
+date-released: "2026-06-24"  # TODO: set to the actual release date of v0.2.1
+keywords:
+  - particle swarm optimization
+  - optimization
+  - metaheuristics
+  - swarm intelligence
+  - rust
+  - python
