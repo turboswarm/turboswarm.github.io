@@ -80,7 +80,7 @@ From Rust, `IntegerSpace` supports three strategies via `with_discretization`:
 - `Floor` — round down.
 
 ```rust
-use pso_core::prelude::*;
+use turboswarm_core::prelude::*;
 
 let space = IntegerSpace::new(vec![(-10, 10); 2])
     .with_discretization(Discretization::Floor);

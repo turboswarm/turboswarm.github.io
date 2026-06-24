@@ -143,7 +143,7 @@ fn non_dominated(pts: &[Vec<f64>]) -> Vec<Vec<f64>> {
 ///
 /// # Example
 /// ```
-/// use pso_core::mopso::hypervolume;
+/// use turboswarm_core::mopso::hypervolume;
 /// // The staircase (1,3), (2,2), (3,1) under reference (4,4) covers area 6.
 /// let front = [vec![1.0, 3.0], vec![2.0, 2.0], vec![3.0, 1.0]];
 /// let hv = hypervolume(&front, &[4.0, 4.0]);

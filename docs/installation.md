@@ -1,6 +1,6 @@
 # Installation
 
-The library has two faces: a pure-Rust core (`pso-core`) usable from Rust, and
+The library has two faces: a pure-Rust core (`turboswarm-core`) usable from Rust, and
 a Python package (`turboswarm`) whose native module is built from the same core.
 
 ## Requirements
@@ -21,7 +21,7 @@ pip install maturin matplotlib numpy
 maturin develop --release      # compiles the Rust core and installs turboswarm
 ```
 
-After **any** change in `crates/pso-core` or `crates/pso-py`, re-run
+After **any** change in `crates/turboswarm-core` or `crates/pso-py`, re-run
 `maturin develop` so Python picks up the changes.
 
 Verify it:
@@ -35,8 +35,8 @@ python examples/quickstart.py
 
 ```bash
 cargo build                          # whole workspace
-cargo test -p pso-core               # convergence tests + doctest
-cargo run --example basic -p pso-core
+cargo test -p turboswarm-core               # convergence tests + doctest
+cargo run --example basic -p turboswarm-core
 ```
 
 ## Optional extras

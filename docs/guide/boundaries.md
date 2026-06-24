@@ -28,7 +28,7 @@ custom `SearchSpace` that does not override `enforce_bounds` falls back to
 clamping.
 
 ```rust
-use pso_core::prelude::*;
+use turboswarm_core::prelude::*;
 
 let params = PsoParams {
     bounds_handling: BoundaryHandling::Reflect,

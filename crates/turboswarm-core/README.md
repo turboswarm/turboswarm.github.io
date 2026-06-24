@@ -1,4 +1,4 @@
-# pso-core
+# turboswarm-core
 
 The Rust core of [**turboswarm**](https://github.com/turboswarm/turboswarm.github.io)
 — a Particle Swarm Optimization library. Pure Rust, no FFI, zero-cost generics.
@@ -12,7 +12,7 @@ variant means implementing one trait, without touching the core.
 - Velocity variants: inertia, constriction (Clerc-Kennedy) and FIPS.
 - Topologies: global, ring, Von Neumann and random.
 - Spaces: continuous, integer (with discretization) and mixed.
-- Multi-objective optimization (MOPSO) in `pso_core::mopso`.
+- Multi-objective optimization (MOPSO) in `turboswarm_core::mopso`.
 - Parallel objective evaluation (`minimize_parallel`, via `rayon`).
 - Run control: target / evaluation / time budgets, stagnation, callback.
 - Benchmarks with metadata (sphere, rastrigin, rosenbrock, ackley, griewank,
@@ -21,8 +21,8 @@ variant means implementing one trait, without touching the core.
 ## Example
 
 ```rust
-use pso_core::prelude::*;
-use pso_core::benchmarks::rastrigin;
+use turboswarm_core::prelude::*;
+use turboswarm_core::benchmarks::rastrigin;
 
 let space = ContinuousSpace::uniform(2, -5.12, 5.12);
 let velocity = InertiaVelocity::new(0.729, 1.49445, 1.49445);

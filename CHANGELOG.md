@@ -3,6 +3,15 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] — 2026-06-24
+
+### Changed
+- **Renamed the Rust crate `pso-core` → `turboswarm-core`** (module path
+  `pso_core` → `turboswarm_core`) for brand consistency with the `turboswarm`
+  Python package. The API is unchanged. The old `pso-core` 0.1.0/0.1.1 remain on
+  crates.io; new Rust users should depend on `turboswarm-core`. The Python
+  package `turboswarm` is unaffected (the rename is internal to the Rust side).
+
 ## [0.1.1] — 2026-06-24
 
 ### Added

@@ -1,5 +1,5 @@
 [package]
-name = "pso-core"
+name = "turboswarm-core"
 description = "Particle Swarm Optimization core: extensible and modular"
 version.workspace = true
 edition.workspace = true
@@ -8,7 +8,7 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 readme = "README.md"
-documentation = "https://docs.rs/pso-core"
+documentation = "https://docs.rs/turboswarm-core"
 keywords = ["pso", "optimization", "swarm", "metaheuristics"]
 categories = ["science", "algorithms"]
 

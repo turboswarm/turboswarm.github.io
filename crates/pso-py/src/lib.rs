@@ -10,8 +10,8 @@ use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
-use pso_core::benchmarks::{ackley, griewank, rastrigin, rosenbrock, schwefel, sphere};
-use pso_core::prelude::*;
+use turboswarm_core::benchmarks::{ackley, griewank, rastrigin, rosenbrock, schwefel, sphere};
+use turboswarm_core::prelude::*;
 
 /// Conversion to f64 for returning positions to Python. Unlike
 /// `Into<f64>`, this is implemented for `i64` (we accept the lossy
@@ -692,9 +692,12 @@ impl PyParetoFront {
                 }
                 r
             }
-            None => pso_core::mopso::nadir_reference(&self.objectives),
+            None => turboswarm_core::mopso::nadir_reference(&self.objectives),
         };
-        Ok(pso_core::mopso::hypervolume(&self.objectives, &reference))
+        Ok(turboswarm_core::mopso::hypervolume(
+            &self.objectives,
+            &reference,
+        ))
     }
 }
 
@@ -713,7 +716,7 @@ impl PyParetoFront {
 ///     float: the hypervolume dominated by ``front`` under ``reference``.
 #[pyfunction(name = "hypervolume")]
 fn py_hypervolume(front: Vec<Vec<f64>>, reference: Vec<f64>) -> f64 {
-    pso_core::mopso::hypervolume(&front, &reference)
+    turboswarm_core::mopso::hypervolume(&front, &reference)
 }
 
 /// Common multi-objective driver. Evaluates a Python callable that returns a
@@ -890,7 +893,7 @@ fn minimize_multi(
 /// domains or building `bounds` without hardcoding them by hand.
 #[pyfunction]
 fn benchmark_info(name: &str) -> PyResult<(f64, f64)> {
-    match pso_core::benchmarks::meta(name) {
+    match turboswarm_core::benchmarks::meta(name) {
         Some(b) => Ok((b.bound, b.optimum_value)),
         None => Err(PyKeyError::new_err(format!(
             "unknown native benchmark: '{name}'"

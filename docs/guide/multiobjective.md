@@ -50,7 +50,7 @@ plt.show()
 ## From Rust
 
 ```rust
-use pso_core::prelude::*;
+use turboswarm_core::prelude::*;
 
 let space = ContinuousSpace::new(vec![(-5.0, 5.0); 2]);
 let params = MopsoParams { seed: Some(42), ..Default::default() };

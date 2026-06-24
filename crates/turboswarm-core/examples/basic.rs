@@ -1,8 +1,8 @@
 //! Usage example from Rust. Run with:
-//!   cargo run --example basic -p pso-core
+//!   cargo run --example basic -p turboswarm-core
 
-use pso_core::benchmarks::rastrigin;
-use pso_core::prelude::*;
+use turboswarm_core::benchmarks::rastrigin;
+use turboswarm_core::prelude::*;
 
 fn main() {
     // A 2-D box with the same range on every dimension.

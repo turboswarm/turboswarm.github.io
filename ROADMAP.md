@@ -3,7 +3,7 @@
 Check off each task as you progress. Phase 1 is already done and verified.
 
 ## ✅ Phase 1 — Minimal functional core (DONE)
-- [x] Cargo workspace + `pso-core` crate
+- [x] Cargo workspace + `turboswarm-core` crate
 - [x] Central traits: `SearchSpace`, `Velocity`, `Topology`
 - [x] `ContinuousSpace` and `IntegerSpace` (with discretization strategies)
 - [x] `InertiaVelocity` variant (with optional decay)
@@ -71,7 +71,7 @@ Check off each task as you progress. Phase 1 is already done and verified.
 - [x] Parallelization with `rayon` (`minimize_parallel`).
 - [x] Constraints (penalty).
 - [x] Stopping criteria (stagnation, tolerance, target, eval/time budget).
-- [x] Multi-objective (MOPSO) as a separate module (`pso_core::mopso`).
+- [x] Multi-objective (MOPSO) as a separate module (`turboswarm_core::mopso`).
 - [x] MOPSO turbulence/mutation operator (`mutation_rate`).
 - [x] MOPSO hypervolume metric (`mopso::hypervolume`, WFG algorithm;
       `ParetoFront.hypervolume` in Python).

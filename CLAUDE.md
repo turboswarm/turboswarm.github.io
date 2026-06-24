@@ -16,18 +16,18 @@ touching the core.
 ## Architecture
 
 ```
-crates/pso-core/   Rust core. No FFI dependencies. Zero-cost generics.
+crates/turboswarm-core/   Rust core. No FFI dependencies. Zero-cost generics.
 crates/pso-py/     PyO3 bindings (native module `turboswarm_native`).
 python/turboswarm/     Python package: API (__init__), pure benchmarks, viz (matplotlib).
-examples/          Rust (in pso-core) and Python (quickstart.py) examples.
+examples/          Rust (in turboswarm-core) and Python (quickstart.py) examples.
 notebooks/         Example notebooks (quickstart, variants, integer, MOPSO).
 ```
 
 ### The central design (read before touching the core)
 
-The PSO loop (`crates/pso-core/src/pso.rs`) does NOT know any concrete variant.
+The PSO loop (`crates/turboswarm-core/src/pso.rs`) does NOT know any concrete variant.
 Everything that changes between variants lives behind three traits in
-`crates/pso-core/src/traits.rs`:
+`crates/turboswarm-core/src/traits.rs`:
 
 - `SearchSpace` — the domain. **The integer/real difference lives only in `decode`**,
   which translates the internal continuous representation (`Vec<f64>`, always) to the
@@ -63,8 +63,8 @@ not exist for `i64`).
 ### Rust
 ```bash
 cargo build                          # compiles the whole workspace
-cargo test -p pso-core               # convergence tests + doctest
-cargo run --example basic -p pso-core
+cargo test -p turboswarm-core               # convergence tests + doctest
+cargo run --example basic -p turboswarm-core
 cargo clippy                         # linting (configured in .vscode)
 ```
 
@@ -76,7 +76,7 @@ maturin develop --release            # compiles the Rust core and installs it
 python examples/quickstart.py
 ```
 
-After ANY change in `crates/pso-core` or `crates/pso-py`, you must re-run
+After ANY change in `crates/turboswarm-core` or `crates/pso-py`, you must re-run
 `maturin develop` so that Python sees the changes.
 
 ### Toolchain
@@ -93,7 +93,7 @@ PyO3 0.22.
 - **History:** `record_history` defaults to `true` (visualization is the
   top priority). In production it would be disabled, but not here.
 - **Tests:** every new variant or function needs a convergence test
-  against its known optimum (see `crates/pso-core/tests/convergence.rs`).
+  against its known optimum (see `crates/turboswarm-core/tests/convergence.rs`).
 - **Benchmarks:** when adding a test function, also register its
   metadata (`Benchmark`) with its optimum, and expose it by name in the binding
   (`native_benchmark` in `crates/pso-py/src/lib.rs`).
@@ -101,7 +101,7 @@ PyO3 0.22.
 ## How to extend (typical tasks)
 
 ### Add a PSO variant
-1. Create `crates/pso-core/src/velocity/<name>.rs` implementing `Velocity`.
+1. Create `crates/turboswarm-core/src/velocity/<name>.rs` implementing `Velocity`.
 2. Export it in `velocity/mod.rs`.
 3. Add a convergence test.
 4. Expose it by name in `build_velocity` (`crates/pso-py/src/lib.rs`).
@@ -112,7 +112,7 @@ Same as above, in `topology/`, implementing `Topology`, and exposing it in
 `build_topology`.
 
 ### Add a benchmark
-1. Function + `Benchmark` metadata in `crates/pso-core/src/benchmarks/functions.rs`.
+1. Function + `Benchmark` metadata in `crates/turboswarm-core/src/benchmarks/functions.rs`.
 2. Export in `benchmarks/mod.rs`.
 3. Add to the `match` of `native_benchmark` in the binding.
 4. (Optional) mirror in `python/turboswarm/benchmarks.py`.
@@ -136,7 +136,7 @@ Same as above, in `topology/`, implementing `Topology`, and exposing it in
   `evaluations`, per-iteration callback); **boundary handling**
   (clamp/reflect/wrap/reinit); `v_max`; **parallel** (`minimize_parallel`,
   rayon) and **vectorized** (`minimize_batch` / `vectorized=True`, NumPy).
-- ✅ **Phase 6** — Multi-objective **MOPSO** in `pso_core::mopso` (`Mopso`,
+- ✅ **Phase 6** — Multi-objective **MOPSO** in `turboswarm_core::mopso` (`Mopso`,
   Pareto archive + crowding + turbulence); `minimize_multi` → `ParetoFront`.
 
 See `ROADMAP.md` for the breakdown of checkable tasks.

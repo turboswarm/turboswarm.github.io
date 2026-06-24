@@ -79,7 +79,7 @@ in Rust.
 For costly objectives, the Rust API offers `Pso::minimize_parallel`, which
 evaluates the swarm in parallel with `rayon`. On a 10-core machine, an
 artificially expensive objective runs **~6.8× faster** than the sequential path
-(`cargo run --release --example parallel -p pso-core`). It uses synchronous
+(`cargo run --release --example parallel -p turboswarm-core`). It uses synchronous
 (Jacobi) updates and needs an `Fn + Sync` objective, so it is a Rust-side
 feature — the Python-callable path is serialized by the GIL and cannot benefit.
 

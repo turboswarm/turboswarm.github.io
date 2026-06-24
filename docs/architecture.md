@@ -6,14 +6,14 @@ trait, without reading or touching the core loop.
 ## The crates
 
 ```
-crates/pso-core/   Rust core. No FFI dependencies. Zero-cost generics.
+crates/turboswarm-core/   Rust core. No FFI dependencies. Zero-cost generics.
 crates/pso-py/     PyO3 bindings (native module `turboswarm_native`).
 python/turboswarm/     Python package: API, pure benchmarks, viz (matplotlib).
 ```
 
 ## Three traits, one loop
 
-The PSO loop in `crates/pso-core/src/pso.rs` knows nothing about any concrete
+The PSO loop in `crates/turboswarm-core/src/pso.rs` knows nothing about any concrete
 variant. Everything that changes lives behind three traits in `traits.rs`:
 
 - **`SearchSpace`** — the problem domain: dimension, bounds, sampling, clamping

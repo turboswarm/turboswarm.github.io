@@ -5,9 +5,9 @@ exposing it by name in the Python binding. No changes to the PSO loop.
 
 ## Add a velocity variant
 
-1. Create `crates/pso-core/src/velocity/<name>.rs` implementing `Velocity`.
+1. Create `crates/turboswarm-core/src/velocity/<name>.rs` implementing `Velocity`.
 2. Export it in `velocity/mod.rs`.
-3. Add a convergence test (see `crates/pso-core/tests/convergence.rs`).
+3. Add a convergence test (see `crates/turboswarm-core/tests/convergence.rs`).
 4. Expose it by name in `build_velocity` (`crates/pso-py/src/lib.rs`).
 5. Run `maturin develop` and try it from Python.
 
@@ -15,7 +15,7 @@ A minimal variant only needs the `update` method:
 
 ```rust
 use rand::{Rng, RngCore};
-use pso_core::traits::{UpdateContext, Velocity};
+use turboswarm_core::traits::{UpdateContext, Velocity};
 
 pub struct MyVelocity { pub w: f64 }
 
@@ -41,8 +41,8 @@ Same shape, under `topology/`, implementing `Topology`. You only need
 `neighbors`; `best_neighbor` is derived for you:
 
 ```rust
-use pso_core::swarm::Swarm;
-use pso_core::traits::Topology;
+use turboswarm_core::swarm::Swarm;
+use turboswarm_core::traits::Topology;
 
 pub struct MyTopology;
 
@@ -58,7 +58,7 @@ Expose it in `build_topology` in the binding.
 
 ## Add a benchmark
 
-1. Function + `Benchmark` metadata in `crates/pso-core/src/benchmarks/functions.rs`.
+1. Function + `Benchmark` metadata in `crates/turboswarm-core/src/benchmarks/functions.rs`.
 2. Export it in `benchmarks/mod.rs` (and add it to `ALL`).
 3. Add it to the `match` in `native_benchmark` in the binding.
 4. (Optional) mirror it in `python/turboswarm/benchmarks.py`.

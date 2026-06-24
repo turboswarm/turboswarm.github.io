@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/turboswarm/"><img src="https://img.shields.io/pypi/v/turboswarm?logo=pypi&logoColor=white" alt="PyPI"></a>
-  <a href="https://crates.io/crates/pso-core"><img src="https://img.shields.io/crates/v/pso-core?logo=rust&logoColor=white" alt="crates.io"></a>
+  <a href="https://crates.io/crates/turboswarm-core"><img src="https://img.shields.io/crates/v/turboswarm-core?logo=rust&logoColor=white" alt="crates.io"></a>
   <a href="https://github.com/turboswarm/turboswarm.github.io/actions/workflows/ci.yml"><img src="https://github.com/turboswarm/turboswarm.github.io/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://turboswarm.github.io/"><img src="https://img.shields.io/badge/docs-turboswarm.github.io-3f51b5" alt="Docs"></a>
   <img src="https://img.shields.io/pypi/pyversions/turboswarm?logo=python&logoColor=white" alt="Python versions">
@@ -57,13 +57,13 @@ See [`ROADMAP.md`](ROADMAP.md) for the task breakdown.
 ## Quick start (Rust)
 
 ```bash
-cargo test -p pso-core           # runs the suite (convergence tests + doctest)
-cargo run --example basic -p pso-core
+cargo test -p turboswarm-core           # runs the suite (convergence tests + doctest)
+cargo run --example basic -p turboswarm-core
 ```
 
 ```rust
-use pso_core::prelude::*;
-use pso_core::benchmarks::rastrigin;
+use turboswarm_core::prelude::*;
+use turboswarm_core::benchmarks::rastrigin;
 
 let space = ContinuousSpace::uniform(2, -5.12, 5.12);   // same range on every dim
 let velocity = InertiaVelocity::new(0.9, 1.49445, 1.49445).with_decay(0.4);
@@ -105,7 +105,7 @@ print(r.best_position, r.best_value)
 ## The design idea (extensibility)
 
 The PSO loop knows nothing about any variant. Everything that changes lives behind
-three traits in [`crates/pso-core/src/traits.rs`](crates/pso-core/src/traits.rs):
+three traits in [`crates/turboswarm-core/src/traits.rs`](crates/turboswarm-core/src/traits.rs):
 
 - `SearchSpace` — the domain; the integer/real difference lives here (`decode`).
 - `Velocity` — the update rule; **one variant = one impl** of this
@@ -134,7 +134,7 @@ pip install -e ".[docs]"          # mkdocs-material + mkdocstrings
 
 The narrative sources live in [`docs/`](docs/); the Python API is generated
 from docstrings via `mkdocstrings`. The Rust API is generated separately with
-rustdoc (`cargo doc -p pso-core --no-deps --open`) and, once published, will be
+rustdoc (`cargo doc -p turboswarm-core --no-deps --open`) and, once published, will be
 available on docs.rs.
 
 **Deployment:** [`.github/workflows/docs.yml`](.github/workflows/docs.yml)
@@ -153,13 +153,13 @@ git tag v0.1.0 && git push --tags
 - **PyPI** (`turboswarm`): [`release-pypi.yml`](.github/workflows/release-pypi.yml)
   builds abi3 wheels (one per platform, CPython ≥ 3.9) + sdist and uploads using
   the `PYPI_API_TOKEN` secret.
-- **crates.io** (`pso-core`): [`release-crates.yml`](.github/workflows/release-crates.yml)
+- **crates.io** (`turboswarm-core`): [`release-crates.yml`](.github/workflows/release-crates.yml)
   runs `cargo publish` — needs a `CARGO_REGISTRY_TOKEN` secret.
 
 ## Structure
 
 ```
-crates/pso-core/   Rust core (zero-cost generics, no FFI)
+crates/turboswarm-core/   Rust core (zero-cost generics, no FFI)
 crates/pso-py/     PyO3 bindings (native module turboswarm_native)
 python/turboswarm/     Python API: __init__, pure benchmarks, viz (matplotlib)
 notebooks/         example notebooks

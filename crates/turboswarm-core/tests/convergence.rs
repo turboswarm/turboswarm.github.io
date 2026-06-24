@@ -1,8 +1,8 @@
 //! Integration tests: validate that the PSO converges near the known
 //! optimum of each test function. With a fixed seed => deterministic.
 
-use pso_core::benchmarks::{ackley, griewank, rastrigin, rosenbrock, schwefel, sphere};
-use pso_core::prelude::*;
+use turboswarm_core::benchmarks::{ackley, griewank, rastrigin, rosenbrock, schwefel, sphere};
+use turboswarm_core::prelude::*;
 
 fn run_continuous<F>(f: F, bound: f64, dim: usize, seed: u64) -> PsoResult<f64>
 where
@@ -350,7 +350,7 @@ fn reports_evaluations_and_default_stop_reason() {
 
 #[test]
 fn boundary_strategies_keep_positions_in_bounds_and_converge() {
-    use pso_core::traits::BoundaryHandling::*;
+    use turboswarm_core::traits::BoundaryHandling::*;
     let bound = 5.12;
     for handling in [Clamp, Reflect, Wrap, Reinit] {
         let space = ContinuousSpace::new(vec![(-bound, bound); 2]);
@@ -384,7 +384,7 @@ fn boundary_strategies_keep_positions_in_bounds_and_converge() {
 
 #[test]
 fn mopso_finds_pareto_front() {
-    use pso_core::mopso::{dominates, Mopso, MopsoParams};
+    use turboswarm_core::mopso::{dominates, Mopso, MopsoParams};
     // Bi-objective: f1 = x^2, f2 = (x-2)^2. The Pareto-optimal set is x in [0, 2].
     let space = ContinuousSpace::new(vec![(-5.0, 5.0)]);
     let params = MopsoParams {
@@ -420,7 +420,7 @@ fn mopso_finds_pareto_front() {
 
 #[test]
 fn hypervolume_matches_known_values_and_is_monotone() {
-    use pso_core::mopso::hypervolume;
+    use turboswarm_core::mopso::hypervolume;
 
     // Staircase under reference (4,4): exact dominated area is 6.
     let front = [vec![1.0, 3.0], vec![2.0, 2.0], vec![3.0, 1.0]];
@@ -447,7 +447,7 @@ fn hypervolume_matches_known_values_and_is_monotone() {
 
 #[test]
 fn mopso_hypervolume_rewards_a_converged_front() {
-    use pso_core::mopso::{Mopso, MopsoParams};
+    use turboswarm_core::mopso::{Mopso, MopsoParams};
     let space = ContinuousSpace::new(vec![(-5.0, 5.0)]);
     let f = |x: &[f64]| vec![x[0] * x[0], (x[0] - 2.0).powi(2)];
 
@@ -464,7 +464,7 @@ fn mopso_hypervolume_rewards_a_converged_front() {
     // dominate (much higher HV than) a deliberately poor, off-front sample.
     let reference = [8.0, 8.0];
     let good = res.hypervolume(Some(&reference));
-    let poor = pso_core::mopso::hypervolume(&[vec![4.0, 6.0], vec![6.0, 4.0]], &reference);
+    let poor = turboswarm_core::mopso::hypervolume(&[vec![4.0, 6.0], vec![6.0, 4.0]], &reference);
     assert!(good > 0.0);
     assert!(
         good > poor,
@@ -477,7 +477,7 @@ fn mopso_hypervolume_rewards_a_converged_front() {
 
 #[test]
 fn mixed_space_respects_per_dimension_types() {
-    use pso_core::spaces::VarType::*;
+    use turboswarm_core::spaces::VarType::*;
     // Dim 0 real (opt 1.5), dim 1 integer (opt 3), dim 2 binary (opt 1).
     let space = MixedSpace::new(
         vec![(-5.0, 5.0), (-10.0, 10.0), (0.0, 1.0)],

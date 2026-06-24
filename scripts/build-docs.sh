@@ -2,7 +2,7 @@
 # Build the project documentation.
 #
 #   Portal (narrative + Python API)  ->  site/index.html   (MkDocs Material)
-#   Rust API reference               ->  target/doc/pso_core/index.html (rustdoc)
+#   Rust API reference               ->  target/doc/turboswarm_core/index.html (rustdoc)
 #
 # Usage:
 #   ./scripts/build-docs.sh            # build the portal and the Rust API
@@ -24,8 +24,8 @@ echo ">> Documentation portal (MkDocs)"
 mkdocs build
 
 echo ">> Rust API (rustdoc)"
-cargo doc -p pso-core --no-deps
+cargo doc -p turboswarm-core --no-deps
 
 echo ""
 echo "Portal:   site/index.html"
-echo "Rust API: target/doc/pso_core/index.html"
+echo "Rust API: target/doc/turboswarm_core/index.html"

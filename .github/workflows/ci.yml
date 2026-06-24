@@ -31,9 +31,9 @@ jobs:
       - name: Format check
         run: cargo fmt --check
       - name: Clippy (deny warnings)
-        run: cargo clippy -p pso-core --all-targets -- -D warnings
+        run: cargo clippy -p turboswarm-core --all-targets -- -D warnings
       - name: Test
-        run: cargo test -p pso-core
+        run: cargo test -p turboswarm-core
 
   python:
     name: Python (${{ matrix.os }})

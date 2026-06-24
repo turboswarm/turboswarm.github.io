@@ -43,8 +43,8 @@ the core. See [Architecture](architecture.md) and [Extending](extending.md).
 === "Rust"
 
     ```rust
-    use pso_core::prelude::*;
-    use pso_core::benchmarks::rastrigin;
+    use turboswarm_core::prelude::*;
+    use turboswarm_core::benchmarks::rastrigin;
 
     let space = ContinuousSpace::new(vec![(-5.12, 5.12); 2]);
     let velocity = InertiaVelocity::new(0.729, 1.49445, 1.49445);

@@ -1,4 +1,4 @@
-//! # pso-core
+//! # turboswarm-core
 //!
 //! Particle Swarm Optimization (PSO) core: extensible and modular.
 //! Pure Rust computation, with no FFI dependencies; the Python bindings live
@@ -34,14 +34,14 @@
 //! ## Minimal example
 //!
 //! ```
-//! use pso_core::prelude::*;
+//! use turboswarm_core::prelude::*;
 //!
 //! let space = ContinuousSpace::uniform(2, -5.12, 5.12);
 //! let velocity = InertiaVelocity::new(0.729, 1.49445, 1.49445);
 //! let params = PsoParams { seed: Some(42), ..Default::default() };
 //!
 //! let pso = Pso::new(space, velocity, GlobalBest::new(), params);
-//! let result = pso.minimize(|x| pso_core::benchmarks::sphere(x));
+//! let result = pso.minimize(|x| turboswarm_core::benchmarks::sphere(x));
 //!
 //! assert!(result.best_value < 1e-3);
 //! ```

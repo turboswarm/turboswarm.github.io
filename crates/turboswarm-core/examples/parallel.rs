@@ -1,13 +1,13 @@
 //! Demonstrates `minimize_parallel`: parallel objective evaluation pays off
 //! when the objective is expensive. Run with:
 //!
-//!     cargo run --release --example parallel -p pso-core
+//!     cargo run --release --example parallel -p turboswarm-core
 
 use std::hint::black_box;
 use std::time::Instant;
 
-use pso_core::benchmarks::sphere;
-use pso_core::prelude::*;
+use turboswarm_core::benchmarks::sphere;
+use turboswarm_core::prelude::*;
 
 /// An artificially expensive objective: it computes `sphere` but burns extra
 /// CPU per evaluation to mimic a costly fitness function (a simulation, a model
