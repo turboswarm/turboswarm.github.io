@@ -42,3 +42,6 @@ docs = ["mkdocs-material", "mkdocstrings[python]", "black"]
 manifest-path = "crates/pso-py/Cargo.toml"
 python-source = "python"
 module-name = "turboswarm.turboswarm_native"
+# Ship the LICENSE in the sdist too (the metadata declares License-File: LICENSE,
+# which PyPI requires to be present in every distribution).
+include = [{ path = "LICENSE", format = "sdist" }]
