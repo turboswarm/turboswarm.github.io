@@ -164,6 +164,16 @@ def test_benchmark_info():
     assert bound == 32.768 and optimum == 0.0
 
 
+def test_cec_native_benchmarks():
+    # Each CEC-family benchmark is registered (has metadata) and runs in 2D.
+    for name in ("bent_cigar", "discus", "elliptic", "zakharov", "levy",
+                 "expanded_schaffer"):
+        bound, optimum = pso.benchmark_info(name)
+        assert optimum == 0.0
+        r = pso.minimize(name, bounds=(-bound, bound), dim=2, seed=42, max_iter=300)
+        assert r.best_value < 0.1, f"{name}: {r.best_value}"
+
+
 def test_sweep_cartesian_product_and_aggregation():
     grid = {"w": [0.4, 0.9], "c1": [1.0, 1.5, 2.0]}
     sw = pso.sweep("sphere", bounds=(-5.12, 5.12), dim=2, grid=grid,

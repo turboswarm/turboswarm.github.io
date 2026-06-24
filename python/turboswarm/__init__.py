@@ -19,7 +19,8 @@ Variants (`velocity=`): "inertia", "constriction", "fips".
 Topologies (`topology=`): "global", "ring", "vonneumann".
 (FIPS performs better with local topologies: "ring" or "vonneumann".)
 Native benchmarks: "sphere", "rastrigin", "rosenbrock", "ackley",
-"griewank", "schwefel".
+"griewank", "schwefel", plus the CEC-family functions "bent_cigar", "discus",
+"elliptic", "zakharov", "levy", "expanded_schaffer".
 
 Hyperparameter sensitivity (`sweep`): run PSO over a Cartesian product of
 hyperparameter values and aggregate over seeds; visualize with

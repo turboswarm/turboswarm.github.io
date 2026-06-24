@@ -173,6 +173,52 @@ fn schwefel_optimum_value_is_near_zero_at_known_point() {
     assert!(schwefel(&opt) < 1e-2, "f(opt) = {}", schwefel(&opt));
 }
 
+// --- CEC-family functions ---
+
+#[test]
+fn cec_unimodal_functions_converge_near_zero() {
+    use turboswarm_core::benchmarks::{bent_cigar, discus, elliptic, levy, zakharov};
+    // Each has its global minimum at 0; in 2D the swarm should nearly reach it.
+    fn check(f: fn(&[f64]) -> f64, bound: f64, name: &str) {
+        let res = run_continuous(f, bound, 2, 42);
+        assert!(res.best_value < 1e-3, "{name}: value = {}", res.best_value);
+    }
+    check(bent_cigar, 100.0, "bent_cigar");
+    check(discus, 100.0, "discus");
+    check(elliptic, 100.0, "elliptic");
+    check(zakharov, 10.0, "zakharov");
+    check(levy, 10.0, "levy");
+}
+
+#[test]
+fn expanded_schaffer_makes_progress() {
+    use turboswarm_core::benchmarks::expanded_schaffer;
+    // Deceptive and highly multimodal: we ask for a good value, not exact.
+    let res = run_continuous(expanded_schaffer, 100.0, 2, 42);
+    assert!(res.best_value < 0.1, "value = {}", res.best_value);
+}
+
+#[test]
+fn cec_optima_evaluate_to_zero() {
+    use turboswarm_core::benchmarks::{
+        bent_cigar, discus, elliptic, expanded_schaffer, levy, zakharov,
+    };
+    // Functions with the optimum at the origin.
+    let origin = vec![0.0; 4];
+    for (f, name) in [
+        (bent_cigar as fn(&[f64]) -> f64, "bent_cigar"),
+        (discus, "discus"),
+        (elliptic, "elliptic"),
+        (zakharov, "zakharov"),
+        (expanded_schaffer, "expanded_schaffer"),
+    ] {
+        assert!(f(&origin).abs() < 1e-9, "{name}(0) = {}", f(&origin));
+    }
+    // Levy's optimum is at all-ones.
+    let ones = vec![1.0; 4];
+    assert!(levy(&ones).abs() < 1e-9, "levy(1) = {}", levy(&ones));
+}
+
 #[test]
 fn fips_converges_with_local_topology() {
     // FIPS performs better with local topologies; the ring is the typical case.

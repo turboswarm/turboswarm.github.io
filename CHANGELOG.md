@@ -6,6 +6,12 @@ this project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **CEC-family benchmark functions**: `bent_cigar`, `discus`, `elliptic`
+  (high-conditioned), `zakharov`, `levy` and `expanded_schaffer` (chained
+  Schaffer F6) — the canonical base functions of the CEC suites (unshifted /
+  unrotated; the official shift/rotation data is not bundled). Registered with
+  metadata, exposed by name in `minimize`/`benchmark_info`, and mirrored in
+  `turboswarm.benchmarks`.
 - **Grid-based MOPSO archive** (Coello's adaptive hypercube grid): pass
   `grid_divisions=d` to `minimize_multi` (or set `MopsoParams.grid_divisions`) to
   keep the Pareto archive diverse with an adaptive grid of `d` cells per

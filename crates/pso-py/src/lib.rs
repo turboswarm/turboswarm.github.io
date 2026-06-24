@@ -10,7 +10,10 @@ use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
-use turboswarm_core::benchmarks::{ackley, griewank, rastrigin, rosenbrock, schwefel, sphere};
+use turboswarm_core::benchmarks::{
+    ackley, bent_cigar, discus, elliptic, expanded_schaffer, griewank, levy, rastrigin, rosenbrock,
+    schwefel, sphere, zakharov,
+};
 use turboswarm_core::prelude::*;
 
 /// Conversion to f64 for returning positions to Python. Unlike
@@ -91,9 +94,16 @@ fn native_benchmark(name: &str) -> PyResult<fn(&[f64]) -> f64> {
         "ackley" => Ok(ackley as fn(&[f64]) -> f64),
         "griewank" => Ok(griewank as fn(&[f64]) -> f64),
         "schwefel" => Ok(schwefel as fn(&[f64]) -> f64),
+        "bent_cigar" => Ok(bent_cigar as fn(&[f64]) -> f64),
+        "discus" => Ok(discus as fn(&[f64]) -> f64),
+        "elliptic" => Ok(elliptic as fn(&[f64]) -> f64),
+        "zakharov" => Ok(zakharov as fn(&[f64]) -> f64),
+        "levy" => Ok(levy as fn(&[f64]) -> f64),
+        "expanded_schaffer" => Ok(expanded_schaffer as fn(&[f64]) -> f64),
         other => Err(PyKeyError::new_err(format!(
             "unknown native benchmark: '{other}'. Available: \
-             sphere, rastrigin, rosenbrock, ackley, griewank, schwefel"
+             sphere, rastrigin, rosenbrock, ackley, griewank, schwefel, \
+             bent_cigar, discus, elliptic, zakharov, levy, expanded_schaffer"
         ))),
     }
 }

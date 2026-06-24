@@ -68,6 +68,9 @@ Check off each task as you progress. Phase 1 is already done and verified.
       constraints, multi-objective (`notebooks/`).
 
 ## Future ideas
+- [x] CEC-family benchmark functions (`bent_cigar`, `discus`, `elliptic`,
+      `zakharov`, `levy`, `expanded_schaffer`): canonical base functions of the
+      CEC suites, native + Python mirror (official shift/rotation data not bundled).
 - [x] Hyperparameter sensitivity analysis (`turboswarm.sweep`): Cartesian
       product over hyperparameters + seed aggregation; `viz.plot_sensitivity`.
 - [x] Parallelization with `rayon` (`minimize_parallel`).
