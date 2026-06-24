@@ -116,6 +116,31 @@ def expanded_schaffer(x):
     return sum(g(x[i], x[(i + 1) % n]) for i in range(n))
 
 
+# --- Grey benchmarks (decision variables are grey numbers ⊗ = [lower, upper]) ---
+
+
+def grey_sphere(greys):
+    """Grey sphere: expected (midpoint) sphere plus a unit uncertainty penalty.
+
+    ``greys`` is a list of ``(lower, upper)`` intervals. With center
+    ``c = (lo + hi) / 2`` and spread ``r = (hi - lo) / 2`` per variable::
+
+        f(greys) = sum(c_i ** 2) + sum(r_i)
+
+    Global minimum f = 0 at the crisp origin (every interval ``[0, 0]``): it
+    rewards both accuracy (centers at 0) and certainty (zero spread).
+    """
+    centers = [(lo + hi) / 2 for (lo, hi) in greys]
+    spreads = [(hi - lo) / 2 for (lo, hi) in greys]
+    return sum(c * c for c in centers) + sum(spreads)
+
+
+#: Recommended ``(center_bound, max_spread)`` per grey benchmark.
+GREY_BOUNDS = {
+    "grey_sphere": (5.12, 5.12),
+}
+
+
 #: Recommended symmetric bound per dimension for each benchmark.
 BOUNDS = {
     "sphere": 5.12,

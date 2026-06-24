@@ -611,6 +611,164 @@ fn mixed_space_respects_per_dimension_types() {
 }
 
 #[test]
+fn grey_space_converges_to_crisp_optimum() {
+    // Grey sphere: minimize Σ [center² + spread] over 2 grey variables.
+    // The optimum is each grey number collapsing to the crisp ⊗[0, 0]
+    // (center 0, spread 0), with objective value 0.
+    use turboswarm_core::spaces::{Grey, GreySpace};
+    let space = GreySpace::uniform(2, -5.12, 5.12, 5.12);
+    let params = PsoParams {
+        n_particles: 40,
+        max_iterations: 300,
+        seed: Some(42),
+        ..Default::default()
+    };
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(|g: &[Grey]| {
+        g.iter()
+            .map(|gi| gi.center() * gi.center() + gi.spread())
+            .sum()
+    });
+
+    // Two grey variables decoded.
+    assert_eq!(res.best_position.len(), 2);
+    assert!(res.best_value < 1e-3, "value = {}", res.best_value);
+    for gi in &res.best_position {
+        assert!(gi.spread() >= 0.0, "spread must be non-negative");
+        assert!(gi.center().abs() < 0.1, "center = {}", gi.center());
+        assert!(gi.spread() < 0.1, "spread = {}", gi.spread());
+        // A near-crisp grey number: lower ≈ upper ≈ center.
+        assert!((gi.upper() - gi.lower()).abs() < 0.2);
+    }
+}
+
+#[test]
+fn grey_interval_and_whitenization_round_trip() {
+    use turboswarm_core::spaces::Grey;
+    let g = Grey::from_interval(2.0, 6.0);
+    assert_eq!(g.center(), 4.0);
+    assert_eq!(g.spread(), 2.0);
+    assert_eq!(g.lower(), 2.0);
+    assert_eq!(g.upper(), 6.0);
+    // Whitenization endpoints and midpoint.
+    assert_eq!(g.whiten(0.0), 2.0);
+    assert_eq!(g.whiten(1.0), 6.0);
+    assert_eq!(g.whiten(0.5), 4.0);
+    // The spread is always non-negative, even from a negative argument.
+    assert_eq!(Grey::new(1.0, -3.0).spread(), 3.0);
+}
+
+#[test]
+fn grey_space_keeps_intervals_within_bounds() {
+    use turboswarm_core::spaces::{Grey, GreySpace};
+    // Per-variable interval limits; the second variable also has a tight
+    // max_spread cap. Maximize total spread (minimize its negative) so the
+    // swarm pushes against the bounds.
+    let space = GreySpace::new(vec![(-2.0, 3.0), (0.0, 1.0)], vec![f64::INFINITY, 0.3]);
+    let params = PsoParams {
+        n_particles: 40,
+        max_iterations: 200,
+        seed: Some(11),
+        ..Default::default()
+    };
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(|g: &[Grey]| -g.iter().map(|gi| gi.spread()).sum::<f64>());
+
+    let limits = [(-2.0, 3.0), (0.0, 1.0)];
+    let caps = [f64::INFINITY, 0.3];
+    for (i, gi) in res.best_position.iter().enumerate() {
+        let (lo, hi) = limits[i];
+        // The whole interval stays within its limits.
+        assert!(
+            gi.lower() >= lo - 1e-9,
+            "var {i} lower {} < {lo}",
+            gi.lower()
+        );
+        assert!(
+            gi.upper() <= hi + 1e-9,
+            "var {i} upper {} > {hi}",
+            gi.upper()
+        );
+        // And the spread respects the extra cap.
+        assert!(
+            gi.spread() <= caps[i] + 1e-9,
+            "var {i} spread {}",
+            gi.spread()
+        );
+    }
+    // Variable 1 should saturate its 0.3 cap; variable 0 should reach near the
+    // box-implied max spread of (3 - (-2))/2 = 2.5.
+    assert!((res.best_position[1].spread() - 0.3).abs() < 1e-2);
+    assert!(res.best_position[0].spread() > 2.0);
+}
+
+#[test]
+fn grey_sphere_benchmark_converges_to_its_optimum() {
+    use turboswarm_core::benchmarks::{grey_meta, grey_sphere};
+    use turboswarm_core::spaces::GreySpace;
+    let meta = grey_meta("grey_sphere").expect("registered");
+    let space = GreySpace::uniform(3, -meta.center_bound, meta.center_bound, meta.max_spread);
+    let params = PsoParams {
+        n_particles: 40,
+        max_iterations: 300,
+        seed: Some(42),
+        ..Default::default()
+    };
+    let res = Pso::new(
+        space,
+        InertiaVelocity::new(0.729, 1.49445, 1.49445),
+        GlobalBest::new(),
+        params,
+    )
+    .minimize(grey_sphere);
+
+    // Converges to the crisp origin (value 0), matching the registered optimum.
+    assert!(
+        (res.best_value - meta.optimum_value).abs() < 1e-2,
+        "value = {}",
+        res.best_value
+    );
+    for gi in &res.best_position {
+        assert!(gi.center().abs() < 0.1 && gi.spread() < 0.1);
+    }
+}
+
+#[test]
+fn grey_interval_arithmetic_is_correct() {
+    use turboswarm_core::spaces::Grey;
+    let a = Grey::from_interval(1.0, 3.0); // [1, 3]
+    let b = Grey::from_interval(2.0, 5.0); // [2, 5]
+
+    let sum = a + b; // [3, 8]
+    assert_eq!((sum.lower(), sum.upper()), (3.0, 8.0));
+
+    let diff = a - b; // [1-5, 3-2] = [-4, 1]
+    assert_eq!((diff.lower(), diff.upper()), (-4.0, 1.0));
+
+    let prod = a * b; // products {2,5,6,15} -> [2, 15]
+    assert_eq!((prod.lower(), prod.upper()), (2.0, 15.0));
+
+    // A negative crisp factor flips the endpoints.
+    let scaled = a * -2.0; // [-6, -2]
+    assert_eq!((scaled.lower(), scaled.upper()), (-6.0, -2.0));
+
+    // A product crossing zero widens symmetrically.
+    let c = Grey::from_interval(-1.0, 2.0);
+    let sq = c * c; // products {1,-2,-2,4} -> [-2, 4]
+    assert_eq!((sq.lower(), sq.upper()), (-2.0, 4.0));
+}
+
+#[test]
 fn callback_is_called_and_can_stop() {
     let space = ContinuousSpace::new(vec![(-5.12, 5.12); 2]);
     let params = PsoParams {

@@ -3,6 +3,31 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-06-24
+
+### Added
+- **Grey numbers** — optimization over grey variables ⊗ = `[lower, upper]`
+  (quantities known only to lie within an interval):
+  - `GreySpace` (Rust): each grey variable is encoded internally as a
+    center + spread pair, so the swarm coordinates stay decoupled. The whole
+    decoded interval is kept within per-variable `(lower, upper)` limits by a
+    coupled projection, with an optional extra `max_spread` cap on the
+    half-width. `Grey` carries center/spread/lower/upper, whitenization
+    (`whiten(λ)`) and interval arithmetic (`+`, `−`, `×`, scaling by a scalar).
+  - `minimize_grey` (Python) returns a `GreyResult` (`best_position` as
+    intervals, plus `best_centers`/`best_spreads`, `convergence`, …). The
+    objective can be a callable or the name of a native grey benchmark.
+    `representation="interval"` (default) or `"center_spread"` chooses how each
+    grey number is passed to and read from a Python objective. `bounds` set the
+    `(lower, upper)` limits each grey number must stay within.
+  - `grey_sphere` benchmark (expected sphere + uncertainty penalty; optimum at
+    the crisp origin) with metadata, dispatchable by name and exposed via
+    `grey_benchmark_info`; mirrored in `turboswarm.benchmarks`.
+  - Example notebook `notebooks/05_grey_numbers.ipynb`.
+- **CI**: a `release-github` workflow creates the GitHub Release on every
+  version tag, keeping the repo's "latest release" in sync with the version
+  published to PyPI/crates.io.
+
 ## [0.1.3] — 2026-06-24
 
 ### Added

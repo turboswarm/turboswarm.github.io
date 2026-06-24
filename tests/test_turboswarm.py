@@ -204,3 +204,68 @@ def test_sweep_rejects_overlapping_and_fixed_seed():
     with pytest.raises(ValueError):
         pso.sweep("sphere", bounds=(-5.12, 5.12), dim=2,
                   grid={"w": [0.4]}, seed=1)         # fixed seed not allowed
+
+
+# --- Grey numbers ---
+
+
+def test_grey_native_benchmark_converges_to_crisp_optimum():
+    cb, ms, opt = pso.grey_benchmark_info("grey_sphere")
+    r = pso.minimize_grey("grey_sphere", bounds=(-cb, cb), dim=3, seed=42)
+    assert abs(r.best_value - opt) < 1e-2
+    assert len(r.best_position) == 3
+    # Converges to the crisp origin: centers near 0, spreads near 0.
+    assert all(abs(c) < 0.1 for c in r.best_centers)
+    assert all(0.0 <= s < 0.1 for s in r.best_spreads)
+    # best_position is the (lower, upper) form, consistent with centers/spreads.
+    for (lo, hi), c, s in zip(r.best_position, r.best_centers, r.best_spreads):
+        assert abs((lo + hi) / 2 - c) < 1e-9
+        assert abs((hi - lo) / 2 - s) < 1e-9
+
+
+def test_grey_representations_agree():
+    def f_interval(greys):
+        c = [(lo + hi) / 2 for (lo, hi) in greys]
+        s = [(hi - lo) / 2 for (lo, hi) in greys]
+        return sum((ci - 2) ** 2 for ci in c) + 0.5 * sum(s)
+
+    def f_center_spread(greys):
+        return sum((c - 2) ** 2 for (c, s) in greys) + 0.5 * sum(s for (c, s) in greys)
+
+    a = pso.minimize_grey(f_interval, bounds=(-10, 10), dim=3, seed=1)
+    b = pso.minimize_grey(f_center_spread, bounds=(-10, 10), dim=3, seed=1,
+                          representation="center_spread")
+    # Same math and seed: identical regardless of the representation chosen.
+    assert a.best_value == b.best_value
+    assert a.best_position == b.best_position
+
+
+def test_grey_bad_representation_errors():
+    import pytest
+    with pytest.raises(ValueError):
+        pso.minimize_grey(lambda g: 0.0, bounds=(-1, 1), dim=2, representation="nope")
+
+
+def test_grey_intervals_stay_within_bounds_and_cap():
+    # Maximize spread; each grey number must stay within its (lower, upper).
+    r = pso.minimize_grey(
+        lambda greys: -sum(s for (c, s) in greys),
+        bounds=[(-2, 3), (0, 1)],
+        representation="center_spread",
+        seed=11,
+    )
+    for (lo, hi), (L, U) in zip(r.best_position, [(-2, 3), (0, 1)]):
+        assert lo >= L - 1e-9 and hi <= U + 1e-9
+    # An extra max_spread caps the half-width even inside wide bounds.
+    r2 = pso.minimize_grey(
+        lambda greys: -sum(s for (c, s) in greys),
+        bounds=(-10, 10), dim=2, max_spread=1.5,
+        representation="center_spread", seed=3,
+    )
+    assert all(s <= 1.5 + 1e-6 for s in r2.best_spreads)
+
+
+def test_grey_unknown_native_benchmark_errors():
+    import pytest
+    with pytest.raises(KeyError):
+        pso.minimize_grey("nope", bounds=(-1, 1), dim=2)

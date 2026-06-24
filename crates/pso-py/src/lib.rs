@@ -108,6 +108,16 @@ fn native_benchmark(name: &str) -> PyResult<fn(&[f64]) -> f64> {
     }
 }
 
+/// Resolves a native grey benchmark by name (operates on grey numbers).
+fn native_grey_benchmark(name: &str) -> PyResult<fn(&[Grey]) -> f64> {
+    match name {
+        "grey_sphere" => Ok(turboswarm_core::benchmarks::grey_sphere as fn(&[Grey]) -> f64),
+        other => Err(PyKeyError::new_err(format!(
+            "unknown native grey benchmark: '{other}'. Available: grey_sphere"
+        ))),
+    }
+}
+
 /// Builds the velocity rule by name.
 fn build_velocity(name: &str, w: f64, c1: f64, c2: f64) -> PyResult<Box<dyn Velocity>> {
     match name {
@@ -728,6 +738,270 @@ where
     }
 }
 
+/// Result of a grey optimization returned by `minimize_grey`.
+///
+/// Attributes:
+///     best_position (list[tuple[float, float]]): the best grey vector, one
+///         ``(lower, upper)`` interval per grey variable.
+///     best_centers (list[float]): center of each grey variable (``(lo+hi)/2``).
+///     best_spreads (list[float]): half-width of each grey variable
+///         (``(hi-lo)/2``, always ``>= 0``).
+///     best_value (float): objective value at ``best_position`` (the
+///         whitenized scalar the search minimized).
+///     convergence (list[float]): best value after each iteration.
+///     evaluations (int): total objective evaluations performed.
+///     stop_reason (str): why the run stopped (see ``PsoResult``).
+#[pyclass(name = "GreyResult")]
+#[derive(Clone)]
+struct PyGreyResult {
+    /// Best grey vector as `(lower, upper)` intervals.
+    #[pyo3(get)]
+    best_position: Vec<(f64, f64)>,
+    /// Center of each grey variable.
+    #[pyo3(get)]
+    best_centers: Vec<f64>,
+    /// Half-width (spread) of each grey variable.
+    #[pyo3(get)]
+    best_spreads: Vec<f64>,
+    /// Best objective value (whitenized scalar).
+    #[pyo3(get)]
+    best_value: f64,
+    /// Convergence curve: best value per iteration.
+    #[pyo3(get)]
+    convergence: Vec<f64>,
+    /// Total number of objective evaluations performed.
+    #[pyo3(get)]
+    evaluations: usize,
+    /// Why the run stopped.
+    #[pyo3(get)]
+    stop_reason: String,
+}
+
+#[pymethods]
+impl PyGreyResult {
+    fn __repr__(&self) -> String {
+        format!(
+            "GreyResult(best_value={:.6}, best_position={:?}, iters={}, stop_reason={})",
+            self.best_value,
+            self.best_position,
+            self.convergence.len(),
+            self.stop_reason
+        )
+    }
+}
+
+/// Resolves the `max_spread` argument: ``None`` (no extra cap), a single float
+/// broadcast to every grey variable, or one value per variable (matching `n`).
+fn resolve_max_spread(
+    py: Python<'_>,
+    max_spread: &Option<PyObject>,
+    n: usize,
+) -> PyResult<Vec<f64>> {
+    let Some(max_spread) = max_spread else {
+        // No extra cap: the spread is limited only by the (lower, upper) box.
+        return Ok(vec![f64::INFINITY; n]);
+    };
+    if let Ok(per_var) = max_spread.extract::<Vec<f64>>(py) {
+        if per_var.len() != n {
+            return Err(PyValueError::new_err(format!(
+                "max_spread has {} values but there are {n} grey variables",
+                per_var.len()
+            )));
+        }
+        return Ok(per_var);
+    }
+    if let Ok(s) = max_spread.extract::<f64>(py) {
+        return Ok(vec![s; n]);
+    }
+    Err(PyValueError::new_err(
+        "max_spread must be a float, a list of floats (one per grey variable), or None",
+    ))
+}
+
+/// Minimizes a grey objective with PSO. Each variable is a *grey number*
+/// ⊗ = ``[lower, upper]`` constrained to lie within its ``bounds``; the swarm
+/// searches over its center and spread.
+///
+/// The objective can be a Python *callable* that receives the candidate as a
+/// ``list[tuple[float, float]]`` (one pair per grey variable, in the
+/// ``representation`` you choose) and returns a single ``float`` (the
+/// whitenized scalar to minimize — e.g. via interval arithmetic and a
+/// whitenization rule of your choice), OR the name (str) of a native grey
+/// benchmark (``"grey_sphere"``), which runs without the GIL.
+///
+/// Args:
+///     objective: callable ``f(list[tuple[float, float]]) -> float`` to minimize,
+///         OR the name (str) of a native grey benchmark: ``"grey_sphere"``.
+///     bounds: ``(lower, upper)`` LIMITS each grey number's interval must stay
+///         within — either a list of pairs (one per variable) or a single pair
+///         with ``dim``. The whole decoded interval is kept inside these limits.
+///     max_spread: optional extra cap on the half-width of each grey variable —
+///         ``None`` (default, limited only by ``bounds``), a single float
+///         (broadcast) or a list of floats (one per variable).
+///     representation (str): how each grey number is passed to (and read from)
+///         the objective: ``"interval"`` (default) gives ``(lower, upper)``
+///         pairs; ``"center_spread"`` gives ``(center, spread)`` pairs. Does not
+///         affect native benchmarks. The result always exposes both forms.
+///     n_particles, max_iter, w, c1, c2, velocity, topology, seed,
+///     record_history, v_max, patience, tol, max_evals, target, max_time,
+///     dim: same meaning as in ``minimize``. (Grey bounds are enforced by
+///     projection onto the feasible region, so ``bounds_handling`` does not
+///     apply.)
+///
+/// Returns:
+///     GreyResult: with ``best_position`` (intervals), ``best_centers``,
+///     ``best_spreads``, ``best_value`` and ``convergence``.
+///
+/// Example:
+///     >>> import turboswarm as pso
+///     >>> # Find grey numbers whose midpoints minimize a sphere while staying crisp.
+///     >>> def f(greys):
+///     ...     centers = [(lo + hi) / 2 for (lo, hi) in greys]
+///     ...     spreads = [(hi - lo) / 2 for (lo, hi) in greys]
+///     ...     return sum(c * c for c in centers) + sum(spreads)
+///     >>> r = pso.minimize_grey(f, bounds=(-5, 5), dim=2, seed=42)
+///     >>> r.best_value < 1e-2
+///     True
+#[allow(clippy::too_many_arguments)]
+#[pyfunction]
+#[pyo3(signature = (
+    objective,
+    bounds,
+    max_spread = None,
+    representation = "interval",
+    n_particles = 30,
+    max_iter = 100,
+    w = 0.729,
+    c1 = 1.49445,
+    c2 = 1.49445,
+    velocity = "inertia",
+    topology = "global",
+    seed = None,
+    record_history = true,
+    v_max = None,
+    patience = 0,
+    tol = 0.0,
+    max_evals = None,
+    target = None,
+    max_time = None,
+    dim = None,
+))]
+fn minimize_grey(
+    py: Python<'_>,
+    objective: PyObject,
+    bounds: PyObject,
+    max_spread: Option<PyObject>,
+    representation: &str,
+    n_particles: usize,
+    max_iter: usize,
+    w: f64,
+    c1: f64,
+    c2: f64,
+    velocity: &str,
+    topology: &str,
+    seed: Option<u64>,
+    record_history: bool,
+    v_max: Option<f64>,
+    patience: usize,
+    tol: f64,
+    max_evals: Option<usize>,
+    target: Option<f64>,
+    max_time: Option<f64>,
+    dim: Option<usize>,
+) -> PyResult<PyGreyResult> {
+    let center_spread = match representation {
+        "interval" => false,
+        "center_spread" | "center-spread" => true,
+        other => {
+            return Err(PyValueError::new_err(format!(
+                "unknown representation: '{other}'. Available: interval, center_spread"
+            )))
+        }
+    };
+    let center_bounds = resolve_bounds(py, &bounds, dim)?;
+    let max_spread = resolve_max_spread(py, &max_spread, center_bounds.len())?;
+    let params = PsoParams {
+        w,
+        c1,
+        c2,
+        n_particles,
+        max_iterations: max_iter,
+        seed,
+        record_history,
+        v_max,
+        patience,
+        tol,
+        max_evals,
+        target,
+        max_time: max_time.map(std::time::Duration::from_secs_f64),
+        // Grey bounds are enforced by projection (see GreySpace::clamp), so the
+        // boundary-handling strategy is irrelevant here; keep the default.
+        bounds_handling: BoundaryHandling::Clamp,
+    };
+    let vel = build_velocity(velocity, w, c1, c2)?;
+    let topo = build_topology(topology, n_particles, seed)?;
+    let space = GreySpace::new(center_bounds, max_spread);
+
+    use std::cell::RefCell;
+    let pso = Pso::new(space, vel, topo, params);
+    let call_error: RefCell<Option<PyErr>> = RefCell::new(None);
+
+    // The objective is either the name of a native grey benchmark (GIL-free) or
+    // a Python callable that takes a list of (lower, upper) tuples.
+    let native_fn = match objective.extract::<String>(py) {
+        Ok(name) => Some(native_grey_benchmark(&name)?),
+        Err(_) => None,
+    };
+
+    let eval = |g: &[Grey]| -> f64 {
+        if let Some(f) = native_fn {
+            return f(g);
+        }
+        if call_error.borrow().is_some() {
+            return f64::INFINITY;
+        }
+        // Present each grey number in the chosen representation.
+        let pairs: Vec<(f64, f64)> = if center_spread {
+            g.iter().map(|gi| (gi.center(), gi.spread())).collect()
+        } else {
+            g.iter().map(|gi| (gi.lower(), gi.upper())).collect()
+        };
+        let args = PyList::new_bound(py, pairs);
+        match objective
+            .call1(py, (args,))
+            .and_then(|r| r.extract::<f64>(py))
+        {
+            Ok(v) => v,
+            Err(e) => {
+                *call_error.borrow_mut() = Some(e);
+                f64::INFINITY
+            }
+        }
+    };
+
+    let result = pso.minimize(eval);
+    if let Some(e) = call_error.into_inner() {
+        return Err(e);
+    }
+
+    let best_position: Vec<(f64, f64)> = result
+        .best_position
+        .iter()
+        .map(|g| (g.lower(), g.upper()))
+        .collect();
+    let best_centers = result.best_position.iter().map(|g| g.center()).collect();
+    let best_spreads = result.best_position.iter().map(|g| g.spread()).collect();
+    Ok(PyGreyResult {
+        best_position,
+        best_centers,
+        best_spreads,
+        best_value: result.best_value,
+        convergence: result.history.best_value.clone(),
+        evaluations: result.evaluations,
+        stop_reason: result.stop_reason.as_str().to_string(),
+    })
+}
+
 /// An approximated Pareto front returned by `minimize_multi`.
 ///
 /// Attributes:
@@ -1001,13 +1275,30 @@ fn benchmark_info(name: &str) -> PyResult<(f64, f64)> {
     }
 }
 
+/// Metadata of a native grey benchmark: ``(center_bound, max_spread,
+/// optimum_value)``. ``center_bound`` is the recommended symmetric bound for
+/// each grey variable's center; ``max_spread`` the recommended maximum spread.
+/// Useful for building ``bounds``/``max_spread`` without hardcoding them.
+#[pyfunction]
+fn grey_benchmark_info(name: &str) -> PyResult<(f64, f64, f64)> {
+    match turboswarm_core::benchmarks::grey_meta(name) {
+        Some(b) => Ok((b.center_bound, b.max_spread, b.optimum_value)),
+        None => Err(PyKeyError::new_err(format!(
+            "unknown native grey benchmark: '{name}'"
+        ))),
+    }
+}
+
 #[pymodule]
 fn turboswarm_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(minimize, m)?)?;
     m.add_function(wrap_pyfunction!(minimize_multi, m)?)?;
+    m.add_function(wrap_pyfunction!(minimize_grey, m)?)?;
     m.add_function(wrap_pyfunction!(py_hypervolume, m)?)?;
     m.add_function(wrap_pyfunction!(benchmark_info, m)?)?;
+    m.add_function(wrap_pyfunction!(grey_benchmark_info, m)?)?;
     m.add_class::<PyPsoResult>()?;
     m.add_class::<PyParetoFront>()?;
+    m.add_class::<PyGreyResult>()?;
     Ok(())
 }

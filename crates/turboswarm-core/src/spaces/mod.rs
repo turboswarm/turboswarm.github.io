@@ -1,10 +1,12 @@
 //! Search spaces: they define the domain and the integer/real distinction.
 
 mod continuous;
+mod grey;
 mod integer;
 mod mixed;
 
 pub use continuous::ContinuousSpace;
+pub use grey::{Grey, GreySpace};
 pub use integer::{Discretization, IntegerSpace};
 pub use mixed::{MixedSpace, VarType};
 
