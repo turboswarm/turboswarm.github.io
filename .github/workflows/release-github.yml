@@ -1,0 +1,45 @@
+name: release-github
+
+# Creates a GitHub Release whenever a version tag (v*) is pushed, on the same
+# trigger as the PyPI and crates.io publish workflows. This keeps the repo's
+# "latest release" in sync with the version actually published to the package
+# registries (they previously desynced because tags were pushed but no Release
+# object was ever created).
+#
+# Uses the built-in GITHUB_TOKEN (no secret to configure). Idempotent: if the
+# Release already exists it does nothing, so re-runs are safe.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to create the Release for (e.g. v0.1.4)"
+        required: true
+
+permissions:
+  contents: write # required to create a Release
+
+jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history + tags, needed for --generate-notes
+
+      - name: Create the GitHub Release (if missing)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; nothing to do."
+          else
+            gh release create "$TAG" \
+              --title "turboswarm ${TAG#v}" \
+              --generate-notes \
+              --verify-tag \
+              --latest
+          fi
