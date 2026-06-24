@@ -65,7 +65,7 @@ built from a contiguous buffer — no per-element Python objects.
 ## 3. Choosing a variant and a topology
 
 ```python
-r = pso.minimize("ackley", bounds=[(-32.768, 32.768)] * 2,
+r = pso.minimize("ackley", bounds=(-32.768, 32.768), dim=2,
                  velocity="fips", topology="ring", seed=1)
 ```
 

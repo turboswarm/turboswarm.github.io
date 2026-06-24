@@ -35,9 +35,19 @@ the core. See [Architecture](architecture.md) and [Extending](extending.md).
     ```python
     import turboswarm as pso
 
-    r = pso.minimize("rastrigin", bounds=[(-5.12, 5.12)] * 2,
-                     velocity="fips", topology="ring", seed=1)
-    print(r.best_position, r.best_value)
+    # Same (min, max) on every axis -> pass the pair once with `dim`.
+    dim = 2
+    search_domain = (-5.12, 5.12)
+
+    result = pso.minimize(
+        "rastrigin",
+        bounds=search_domain,
+        dim=dim,
+        velocity="fips",
+        topology="ring",
+        seed=1,
+    )
+    print(result.best_position, result.best_value)
     ```
 
 === "Rust"

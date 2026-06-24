@@ -21,16 +21,16 @@ maturin develop --release      # compiles the Rust core and installs it
 import turboswarm as pso
 
 # Native benchmark (fast, in Rust, without the GIL)
-r = pso.minimize("rastrigin", bounds=[(-5.12, 5.12)] * 2, seed=42)
+r = pso.minimize("rastrigin", bounds=(-5.12, 5.12), dim=2, seed=42)
 
 # Your own function in Python
-r = pso.minimize(lambda x: sum(xi**2 for xi in x), bounds=[(-5, 5)] * 3)
+r = pso.minimize(lambda x: sum(xi**2 for xi in x), bounds=(-5, 5), dim=3)
 
 # Integer variables
-r = pso.minimize(f, bounds=[(-10, 10)] * 2, integer=True)
+r = pso.minimize(f, bounds=(-10, 10), dim=2, integer=True)
 
 # Variant and topology by name
-r = pso.minimize("ackley", bounds=[(-32.768, 32.768)] * 2,
+r = pso.minimize("ackley", bounds=(-32.768, 32.768), dim=2,
                  velocity="fips", topology="ring", seed=1)
 
 print(r.best_position, r.best_value)
