@@ -19,6 +19,18 @@ priorities are visualization, algorithm comparison and code clarity.
 
 Usable directly from **Rust** and from **Python** (via PyO3 + maturin).
 
+<p align="center">
+  <img src="docs/assets/swarm.gif" alt="A 30-particle swarm minimizing the Rastrigin function" width="520">
+  <br>
+  <em>A 30-particle swarm converging on the Rastrigin minimum — rendered with <code>turboswarm.viz</code>.</em>
+</p>
+
+```python
+import turboswarm as pso
+r = pso.minimize("rastrigin", bounds=(-5.12, 5.12), dim=2, seed=42)
+print(r.best_value)        # ≈ 0.0
+```
+
 ## What it includes
 
 - **Velocity variants:** inertia (Shi-Eberhart), constriction (Clerc-Kennedy)
@@ -26,19 +38,24 @@ Usable directly from **Rust** and from **Python** (via PyO3 + maturin).
 - **Topologies:** global (gbest), ring (lbest), Von Neumann (2D grid) and random.
 - **Spaces:** continuous (real), integer (with a discretization strategy),
   binary and **mixed** (per-dimension type).
-- **Multi-objective (MOPSO):** Pareto front via an external archive + crowding
-  distance, with a turbulence operator.
-- **Constraints:** inequality constraints via a penalty.
+- **Multi-objective (MOPSO):** Pareto front via an external archive with a
+  turbulence operator, **crowding-distance or Coello's adaptive grid** for
+  diversity, and a **hypervolume** quality metric.
+- **Constraints:** inequality **and equality** constraints via a penalty, plus
+  an optional **repair** operator that maps candidates back to the feasible set.
 - **Run control:** stop on target value, evaluation budget, wall-clock budget
   or stagnation; per-iteration callback; the result reports `stop_reason` and
   `evaluations`.
 - **Boundary handling:** clamp, reflect, wrap or reinit.
 - **Performance:** velocity clamp (`v_max`), parallel evaluation (`rayon`) and a
   vectorized/batched objective path.
-- **Benchmarks:** sphere, rastrigin, rosenbrock, ackley, griewank and schwefel
-  (with metadata: recommended bound and known optimum).
+- **Hyperparameter sensitivity:** `sweep` runs a Cartesian product of
+  hyperparameter values (aggregated over seeds) to see what matters.
+- **Benchmarks:** sphere, rastrigin, rosenbrock, ackley, griewank, schwefel and
+  the **CEC-family** functions (bent cigar, discus, elliptic, zakharov, levy,
+  expanded Schaffer) — each with metadata (recommended bound, known optimum).
 - **Visualization** (Python): convergence curves, variant comparison, 2D swarm
-  animation and Pareto-front plots.
+  animation, Pareto-front and sensitivity plots.
 - **Reproducibility:** every experiment accepts a `seed`.
 
 ## Status by phase

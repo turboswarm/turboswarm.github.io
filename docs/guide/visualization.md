@@ -42,9 +42,20 @@ r = pso.minimize("rastrigin", bounds=[(-5.12, 5.12)] * 2, seed=1)
 anim = pso.viz.animate_swarm(r, pso.benchmarks.rastrigin, [(-5.12, 5.12)] * 2)
 plt.show()
 # In a notebook:  from IPython.display import HTML; HTML(anim.to_jshtml())
+# Save a GIF:      from matplotlib.animation import PillowWriter
+#                  anim.save("swarm.gif", writer=PillowWriter(fps=10))
 ```
 
 `animate_swarm` only supports 2D problems and requires `record_history=True`.
+
+![A 30-particle swarm minimizing the Rastrigin function](../assets/swarm.gif)
+
+The GIF above is produced by [`scripts/make_swarm_gif.py`](https://github.com/turboswarm/turboswarm.github.io/blob/main/scripts/make_swarm_gif.py).
+
+## Sensitivity plots
+
+See [Sensitivity analysis](sensitivity.md) for `viz.plot_sensitivity` (a line
+for one swept hyperparameter, a heatmap for two).
 
 ## Logging
 
