@@ -20,6 +20,10 @@ Topologies (`topology=`): "global", "ring", "vonneumann".
 (FIPS performs better with local topologies: "ring" or "vonneumann".)
 Native benchmarks: "sphere", "rastrigin", "rosenbrock", "ackley",
 "griewank", "schwefel".
+
+Hyperparameter sensitivity (`sweep`): run PSO over a Cartesian product of
+hyperparameter values and aggregate over seeds; visualize with
+`viz.plot_sensitivity`.
 """
 
 import logging
@@ -32,6 +36,7 @@ from .turboswarm_native import (
     ParetoFront,
     benchmark_info,
 )
+from .sensitivity import sweep, SweepResult
 from . import benchmarks, viz
 
 # Library best practice: attach a NullHandler so importing turboswarm never emits
@@ -44,6 +49,8 @@ __all__ = [
     "minimize",
     "minimize_multi",
     "hypervolume",
+    "sweep",
+    "SweepResult",
     "PsoResult",
     "ParetoFront",
     "benchmark_info",

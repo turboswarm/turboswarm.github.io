@@ -5,6 +5,7 @@ Requires matplotlib. Functions:
   - animate_swarm(result, function, bounds)   # 2D swarm over a contour
   - compare(results)                          # overlay convergence curves
   - plot_pareto(front, ax=None)               # objective space of a ParetoFront
+  - plot_sensitivity(sweep, x, y=None)        # hyperparameter sweep (line/heatmap)
 """
 import logging
 
@@ -104,3 +105,81 @@ def animate_swarm(result, function, bounds, interval=150):
         fig, update, frames=len(result.history),
         init_func=init, interval=interval, blit=False
     )
+
+
+def _ordered_unique(values):
+    """Unique values preserving first-seen order (matches the grid order)."""
+    return list(dict.fromkeys(values))
+
+
+def plot_sensitivity(sweep, x, y=None, metric="mean", ax=None):
+    """Visualize a hyperparameter sweep (the result of ``turboswarm.sweep``).
+
+    1D (``y=None``): a line of ``metric`` vs the ``x`` hyperparameter. When the
+    sweep varies other hyperparameters too, the points are marginalized over
+    them (mean across the group) and the spread is shown as error bars.
+
+    2D (``y`` given): a heatmap of ``metric`` over the ``x`` (columns) and ``y``
+    (rows) grid, again marginalizing over any other swept hyperparameters.
+
+    Args:
+        sweep (SweepResult): from ``turboswarm.sweep``.
+        x (str): hyperparameter for the x-axis (a key in ``sweep.param_names``).
+        y (str | None): hyperparameter for the y-axis -> heatmap; ``None`` -> line.
+        metric (str): which per-combination statistic to plot (``"mean"``,
+            ``"min"``, ``"max"``, ``"std"``). Defaults to ``"mean"``.
+        ax: optional matplotlib Axes.
+
+    Returns:
+        The matplotlib Axes.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    records = list(sweep)
+    if not records:
+        raise ValueError("empty sweep")
+    for name in (x, y) if y is not None else (x,):
+        if name not in records[0]:
+            raise ValueError(f"{name!r} is not a swept hyperparameter")
+
+    if ax is None:
+        _, ax = plt.subplots()
+
+    if y is None:
+        xs = _ordered_unique(r[x] for r in records)
+        means, errs = [], []
+        for xv in xs:
+            vals = [r[metric] for r in records if r[x] == xv]
+            means.append(float(np.mean(vals)))
+            errs.append(float(np.std(vals)) if len(vals) > 1 else 0.0)
+        positions = range(len(xs))
+        ax.errorbar(positions, means, yerr=errs, marker="o", capsize=4)
+        ax.set_xticks(list(positions))
+        ax.set_xticklabels([str(v) for v in xs])
+        ax.set_xlabel(x)
+        ax.set_ylabel(f"{metric} best value")
+        ax.set_title(f"Sensitivity to {x}")
+        logger.info("plotting 1D sensitivity over %r (%d levels)", x, len(xs))
+        return ax
+
+    xs = _ordered_unique(r[x] for r in records)
+    ys = _ordered_unique(r[y] for r in records)
+    grid = np.full((len(ys), len(xs)), np.nan)
+    for j, yv in enumerate(ys):
+        for i, xv in enumerate(xs):
+            cell = [r[metric] for r in records if r[x] == xv and r[y] == yv]
+            if cell:
+                grid[j, i] = float(np.mean(cell))
+    im = ax.imshow(grid, origin="lower", aspect="auto", cmap="viridis")
+    ax.set_xticks(range(len(xs)))
+    ax.set_xticklabels([str(v) for v in xs])
+    ax.set_yticks(range(len(ys)))
+    ax.set_yticklabels([str(v) for v in ys])
+    ax.set_xlabel(x)
+    ax.set_ylabel(y)
+    ax.set_title(f"Sensitivity: {metric} best value")
+    ax.figure.colorbar(im, ax=ax, label=f"{metric} best value")
+    logger.info("plotting 2D sensitivity heatmap %r x %r (%dx%d)",
+                x, y, len(xs), len(ys))
+    return ax

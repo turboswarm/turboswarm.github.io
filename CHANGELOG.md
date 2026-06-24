@@ -3,6 +3,16 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Hyperparameter sensitivity analysis** (`turboswarm.sweep`): runs PSO over a
+  Cartesian product of hyperparameter value lists (`grid={"w": [...], "c1":
+  [...]}`), optionally repeated over several seeds, and returns a `SweepResult`
+  (records with `mean`/`std`/`min`/`max` of the best value, `.best()`, and an
+  optional `.to_dataframe()`). New `viz.plot_sensitivity` draws a line (1
+  hyperparameter) or a heatmap (2).
+
 ## [0.1.2] — 2026-06-24
 
 ### Changed

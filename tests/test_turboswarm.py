@@ -111,3 +111,35 @@ def test_multi_objective_pareto_front():
 def test_benchmark_info():
     bound, optimum = pso.benchmark_info("ackley")
     assert bound == 32.768 and optimum == 0.0
+
+
+def test_sweep_cartesian_product_and_aggregation():
+    grid = {"w": [0.4, 0.9], "c1": [1.0, 1.5, 2.0]}
+    sw = pso.sweep("sphere", bounds=(-5.12, 5.12), dim=2, grid=grid,
+                   seeds=3, n_particles=20, max_iter=40)
+    # 2 x 3 combinations.
+    assert len(sw) == 6
+    for rec in sw:
+        assert set(("w", "c1", "values", "n", "mean", "std", "min", "max")) <= rec.keys()
+        assert rec["n"] == 3 and len(rec["values"]) == 3
+        assert rec["min"] <= rec["mean"] <= rec["max"]
+    best = sw.best()
+    assert best["mean"] == min(r["mean"] for r in sw)
+
+
+def test_sweep_seed_is_reproducible():
+    kw = dict(bounds=(-5.12, 5.12), dim=2, grid={"w": [0.7]},
+              seeds=[1, 2], n_particles=20, max_iter=30)
+    a = pso.sweep("sphere", **kw)[0]["values"]
+    b = pso.sweep("sphere", **kw)[0]["values"]
+    assert a == b
+
+
+def test_sweep_rejects_overlapping_and_fixed_seed():
+    import pytest
+    with pytest.raises(ValueError):
+        pso.sweep("sphere", bounds=(-5.12, 5.12), dim=2,
+                  grid={"w": [0.4]}, w=0.9)          # swept and fixed
+    with pytest.raises(ValueError):
+        pso.sweep("sphere", bounds=(-5.12, 5.12), dim=2,
+                  grid={"w": [0.4]}, seed=1)         # fixed seed not allowed
