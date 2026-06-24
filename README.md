@@ -2,6 +2,15 @@
   <img src="assets/logo.svg" alt="turboswarm" width="128">
 </p>
 
+<p align="center">
+  <a href="https://pypi.org/project/turboswarm/"><img src="https://img.shields.io/pypi/v/turboswarm?logo=pypi&logoColor=white" alt="PyPI"></a>
+  <a href="https://crates.io/crates/pso-core"><img src="https://img.shields.io/crates/v/pso-core?logo=rust&logoColor=white" alt="crates.io"></a>
+  <a href="https://github.com/turboswarm/turboswarm.github.io/actions/workflows/ci.yml"><img src="https://github.com/turboswarm/turboswarm.github.io/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://turboswarm.github.io/"><img src="https://img.shields.io/badge/docs-turboswarm.github.io-3f51b5" alt="Docs"></a>
+  <img src="https://img.shields.io/pypi/pyversions/turboswarm?logo=python&logoColor=white" alt="Python versions">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT">
+</p>
+
 # turboswarm
 
 A general-purpose, extensible **Particle Swarm Optimization (PSO)** library with

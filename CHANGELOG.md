@@ -3,9 +3,16 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] — 2026-06-24
+
+First public release: `turboswarm` on PyPI and `pso-core` on crates.io.
 
 ### Added
+- Core foundations: the `SearchSpace`, `Velocity` and `Topology` traits and the
+  generic PSO loop; `ContinuousSpace`/`IntegerSpace`; the inertia variant and
+  global topology; history recording; sphere/rastrigin/rosenbrock benchmarks;
+  Python bindings (`minimize`, `PsoResult`, `import turboswarm`) and the `viz`
+  layer (convergence, comparison, 2D animation).
 - **Constriction** velocity variant (Clerc-Kennedy): the χ factor is derived
   from `c1 + c2`.
 - **FIPS** velocity variant (Fully Informed PSO): the particle is informed
@@ -65,15 +72,3 @@ this project follows [Semantic Versioning](https://semver.org/).
   neighborhood); `best_neighbor` is derived by default. `UpdateContext` exposes
   `neighbor_bests` (the `pbest` of the entire neighborhood). The behavior of
   the classic variants does not change (verified by the determinism tests).
-
-## [0.1.0]
-
-### Added
-- Rust core: `SearchSpace`, `Velocity`, `Topology` traits; generic PSO loop.
-- Continuous (`ContinuousSpace`) and integer (`IntegerSpace`) spaces.
-- Inertia variant (`InertiaVelocity`, with optional decay) and global topology
-  (`GlobalBest`).
-- History recording for visualization; sphere, rastrigin and
-  rosenbrock benchmarks; convergence and reproducibility tests.
-- Python bindings (PyO3 + maturin): `minimize`, `PsoResult` and `import turboswarm`.
-- Visualization layer (`turboswarm.viz`): convergence, comparison and 2D animation.
