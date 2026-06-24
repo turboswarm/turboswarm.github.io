@@ -41,7 +41,7 @@ nav:
       - Topologies: guide/topologies.md
       - Benchmarks: guide/benchmarks.md
       - Integer optimization: guide/integer.md
-      - Grey numbers: guide/grey.md
+      - Uncertain values: guide/grey.md
       - Constraints: guide/constraints.md
       - Boundary handling: guide/boundaries.md
       - Multi-objective: guide/multiobjective.md
