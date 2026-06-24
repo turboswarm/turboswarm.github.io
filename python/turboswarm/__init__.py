@@ -39,7 +39,7 @@ from . import benchmarks, viz
 # (e.g. logging.basicConfig(level=logging.INFO)).
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = [
     "minimize",
     "minimize_multi",
