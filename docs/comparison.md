@@ -8,7 +8,7 @@ each library has areas where it leads.
 ## Feature comparison
 
 | Feature | turboswarm | pyswarms | pyswarm |
-|---------|:----------:|:--------:|:-------:|
+|---------|:-----------|:---------|:--------|
 | Compute core | **Rust** (native, no GIL) | Python + NumPy | Pure Python |
 | Velocity variants | inertia, constriction, **FIPS** | inertia (global/local/general), binary | inertia/constriction |
 | Topologies | global, ring, Von Neumann, random | global, ring, Von Neumann, pyramid, random | global |
