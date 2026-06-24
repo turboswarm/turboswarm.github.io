@@ -22,59 +22,86 @@ bibliography: paper.bib
 
 `turboswarm` is a general-purpose Particle Swarm Optimization (PSO) library
 [@kennedy1995particle] with a compute core written in Rust and an ergonomic
-Python API. It targets real, integer, mixed and binary decision variables, and
-is built as an *extensible framework*: each algorithmic variant is a single
-trait implementation, so adding a new velocity rule or swarm topology does not
-require touching the optimization loop. The same Rust core is usable directly
-from Rust (zero-cost generics) and from Python (via PyO3 + maturin), where
-objectives may be supplied either as Python callables or selected from native
-benchmarks that run without holding the Global Interpreter Lock. `turboswarm`
-ships several established variants (inertia [@shi1998modified], constriction
-[@clerc2002particle] and the Fully Informed Particle Swarm
-[@mendes2004fully]), swarm topologies (global, ring, Von Neumann and random),
-inequality and equality constraints with an optional repair operator,
-multi-objective optimization through an external Pareto archive
-[@coello2004handling], and a `matplotlib`-based visualization module for
-convergence curves, variant comparison, 2D swarm animation and Pareto fronts.
-Every experiment is seedable for reproducibility.
+Python API. PSO is a population-based, gradient-free optimization method in
+which a swarm of candidate solutions ("particles") moves through the search
+space guided by each particle's own best position and the best position found
+in its neighbourhood. `turboswarm` targets real, integer, mixed, binary and
+interval-valued ("grey") decision variables, and exposes established
+algorithmic variants, swarm topologies, constraint handling, multi-objective
+optimization and visualization behind a single, uniform interface. The same
+Rust core is usable directly from Rust (through zero-cost generics) and from
+Python (through PyO3 and maturin), where objective functions may be supplied
+either as Python callables or selected from native benchmarks that run without
+holding the Global Interpreter Lock (GIL). Every experiment is seedable, so
+results are reproducible.
 
 # Statement of need
 
 PSO is one of the most widely used metaheuristics for continuous and
-combinatorial optimization, and several mature Python libraries already exist,
-including `pyswarms` [@miranda2018pyswarms], `pymoo` [@blank2020pymoo], `DEAP`
-[@fortin2012deap] and `nevergrad` [@rapin2018nevergrad]. These are, however,
-implemented predominantly in pure Python, which couples the cost of the
-optimization loop itself to the interpreter. `turboswarm` addresses two gaps.
+combinatorial optimization, with applications across engineering, machine
+learning and the sciences. Researchers and students need an implementation that
+is fast, reproducible, broad in scope, and easy to extend with new variants for
+comparative studies. Existing Python libraries cover parts of this need, but
+they are implemented predominantly in pure Python, which ties the cost of the
+optimization loop to the interpreter and makes large or repeated experiments
+slow. `turboswarm` was written to provide a compiled, reproducible and
+extensible PSO toolkit that is nonetheless as easy to call as a pure-Python
+package, suitable for research experiments, algorithm benchmarking and teaching.
 
-First, **performance without sacrificing usability**: the swarm loop, the
-search-space machinery and the native benchmarks run in compiled Rust, while
-the public API stays in Python. For objectives that can be expressed natively
-the entire optimization runs without the GIL, and rayon-backed parallel and
-NumPy-vectorized evaluation paths are provided for expensive Python
-objectives.
+# State of the field
 
-Second, **extensibility as a first-class concern**: the optimization loop is
-fully decoupled from the concrete variant through three traits — `SearchSpace`
-(the domain, where the only difference between real and integer variables
-lives, at decode time), `Velocity` (the update rule) and `Topology` (the
-social structure). A new PSO variant is therefore a self-contained trait
-implementation accompanied by a convergence test, rather than a fork of the
-core loop. This makes the library a convenient base both for teaching and for
-comparing algorithmic variants under identical conditions.
+Several mature open-source PSO and metaheuristics packages exist, including
+`pyswarms` [@miranda2018pyswarms], `pymoo` [@blank2020pymoo], `DEAP`
+[@fortin2012deap] and `nevergrad` [@rapin2018nevergrad]. These are valuable and
+widely adopted, but they are implemented mainly in pure Python, so the swarm
+loop itself runs in the interpreter. `turboswarm` differs in three ways that
+motivated building a new library rather than contributing to an existing one.
+First, its optimization loop and native objectives are compiled (Rust) and run
+without the GIL, giving a measured speed advantage (see Performance). Second, it
+treats extensibility as a first-class design goal: a new variant is a
+self-contained trait implementation, not a fork of the core (see Software
+design). Third, it provides a grey-number (interval-valued) search space, in
+which each decision variable is known only to lie within an interval — a
+capability we are not aware of in the libraries above. Together these make
+`turboswarm` complementary to, rather than a re-implementation of, the existing
+ecosystem.
 
-Beyond the standard real/integer/mixed/binary spaces, `turboswarm` also
-provides a **grey-number search space**, in which each decision variable is an
-interval-valued (grey) quantity rather than a crisp scalar — a feature not
-available in the libraries above. This supports optimization under variables
-known only within bounds, and is exercised by a dedicated convergence test and
-benchmark.
+# Software design
 
-The combination of a compiled core, an extensible trait-based design, broad
-feature coverage (constraints, multi-objective optimization, several spaces and
-topologies) and built-in visualization makes `turboswarm` suitable for
-research, benchmarking and teaching contexts where both reproducibility and
-inspection of the swarm dynamics matter.
+The optimization loop is fully decoupled from any concrete variant through three
+traits. `SearchSpace` defines the domain; the only difference between real and
+integer variables lives in its `decode` step, so the swarm always operates on a
+continuous internal representation and the discretization happens only at
+evaluation time. `Velocity` defines the update rule, so a single PSO variant
+(inertia [@shi1998modified], constriction [@clerc2002particle] or the Fully
+Informed Particle Swarm [@mendes2004fully]) is exactly one implementation of
+this trait. `Topology` defines the social structure of the swarm (global, ring,
+Von Neumann or random). Because the loop is generic over these traits, adding a
+variant requires no change to the core and is accompanied by a convergence test
+against a known optimum. For the Python boundary the same traits are implemented
+for boxed trait objects, so variants can be selected at runtime by name without
+duplicating the loop. This design confines the real/integer/mixed/binary/grey
+distinction to the search space and makes the library a convenient base for
+comparing variants under identical conditions.
+
+# Features
+
+- **Velocity variants:** inertia [@shi1998modified], constriction
+  [@clerc2002particle] and Fully Informed PSO [@mendes2004fully].
+- **Topologies:** global (gbest), ring (lbest), Von Neumann and random.
+- **Search spaces:** continuous, integer, binary, mixed (per-dimension type)
+  and grey (interval-valued variables).
+- **Multi-objective (MOPSO):** external Pareto archive with crowding distance
+  or an adaptive grid for diversity, a turbulence operator, and a hypervolume
+  quality indicator [@coello2004handling].
+- **Constraints:** inequality and equality constraints via a penalty, plus an
+  optional repair operator.
+- **Run control:** stop on target value, evaluation budget, wall-clock budget
+  or stagnation, with a per-iteration callback and a reported stop reason.
+- **Performance:** velocity clamping, rayon-based parallel evaluation and a
+  NumPy-vectorized batch path.
+- **Visualization (Python):** convergence, variant comparison, 2D swarm
+  animation, Pareto-front and hyperparameter-sensitivity plots.
 
 # Performance
 
@@ -99,28 +126,33 @@ Measured on an Apple M5 (10 cores, macOS 26.5). Absolute numbers are
 machine-dependent; the full benchmark — including the raw results and machine
 provenance — is reproducible with `benches/bench_suite.py`.
 
-# Features
+# Research impact
 
-- **Velocity variants:** inertia [@shi1998modified], constriction
-  [@clerc2002particle] and Fully Informed PSO [@mendes2004fully].
-- **Topologies:** global (gbest), ring (lbest), Von Neumann and random.
-- **Search spaces:** continuous, integer, binary, mixed (per-dimension type)
-  and grey (interval-valued variables).
-- **Multi-objective (MOPSO):** external Pareto archive with crowding distance
-  or an adaptive grid for diversity, a turbulence operator, and a hypervolume
-  quality indicator.
-- **Constraints:** inequality and equality constraints via a penalty, plus an
-  optional repair operator.
-- **Run control:** stop on target value, evaluation budget, wall-clock budget
-  or stagnation, with a per-iteration callback and a reported stop reason.
-- **Performance:** velocity clamping, rayon-based parallel evaluation and a
-  NumPy-vectorized batch path.
-- **Visualization (Python):** convergence, variant comparison, 2D swarm
-  animation, Pareto-front and hyperparameter-sensitivity plots.
+`turboswarm` is distributed on PyPI (`turboswarm`) and crates.io
+(`turboswarm-core`) and archived on Zenodo (DOI 10.5281/zenodo.20832446), so it
+can be installed and cited directly. By exposing many PSO variants, topologies
+and search spaces behind one reproducible interface, it lowers the cost of
+comparative algorithmic studies and supports teaching through its built-in
+visualization and animation. Its trait-based core is also the foundation for
+ongoing methodological work on optimization with grey (interval-valued)
+variables. The project ships automated tests, continuous integration for both
+the Rust core and the Python layer, narrative and API documentation, and
+contribution guidelines, so it is ready for external use and community
+contributions.
+
+# AI usage disclosure
+
+The `turboswarm` library itself — the Rust core, the Python bindings and the
+algorithms — was designed and written by the author. Generative AI (Anthropic's
+Claude, used through Claude Code) assisted with drafting this paper,
+implementing the comparative benchmark suite, and editing parts of the
+documentation. All AI-assisted text and code were reviewed, tested and validated
+by the author, who takes full responsibility for the content.
 
 # Acknowledgements
 
-We acknowledge the open-source Rust and PyO3 communities, whose tooling
-underpins the Rust–Python boundary used in this work.
+The author received no specific funding for this work, and acknowledges the
+open-source Rust and PyO3 communities, whose tooling underpins the Rust–Python
+boundary used here.
 
 # References
