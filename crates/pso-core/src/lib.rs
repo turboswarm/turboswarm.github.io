@@ -69,7 +69,7 @@ pub mod velocity;
 /// Convenient re-exports for common usage.
 pub mod prelude {
     pub use crate::history::History;
-    pub use crate::mopso::{MoSolution, Mopso, MopsoParams, MopsoResult};
+    pub use crate::mopso::{hypervolume, MoSolution, Mopso, MopsoParams, MopsoResult};
     pub use crate::params::PsoParams;
     pub use crate::pso::{IterationInfo, Pso, PsoResult, StopReason};
     pub use crate::spaces::{ContinuousSpace, Discretization, IntegerSpace, MixedSpace, VarType};

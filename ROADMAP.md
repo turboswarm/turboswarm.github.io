@@ -73,5 +73,7 @@ Check off each task as you progress. Phase 1 is already done and verified.
 - [x] Stopping criteria (stagnation, tolerance, target, eval/time budget).
 - [x] Multi-objective (MOPSO) as a separate module (`pso_core::mopso`).
 - [x] MOPSO turbulence/mutation operator (`mutation_rate`).
-- [ ] MOPSO refinements: hypervolume metric, grid-based archive (Coello's).
+- [x] MOPSO hypervolume metric (`mopso::hypervolume`, WFG algorithm;
+      `ParetoFront.hypervolume` in Python).
+- [ ] MOPSO refinements: grid-based archive (Coello's).
 - [ ] Equality constraints and repair methods.

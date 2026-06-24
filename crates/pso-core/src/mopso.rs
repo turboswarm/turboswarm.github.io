@@ -61,6 +61,43 @@ pub struct MopsoResult<T> {
     pub front: Vec<MoSolution<T>>,
 }
 
+impl<T> MopsoResult<T> {
+    /// Hypervolume of this front (see [`hypervolume`]). If `reference` is
+    /// `None`, a reference point is derived from the front's nadir (per
+    /// objective, the worst value plus 10% of its spread), which is convenient
+    /// for a single run but **not** comparable across runs — pass an explicit,
+    /// shared `reference` when comparing fronts.
+    pub fn hypervolume(&self, reference: Option<&[f64]>) -> f64 {
+        let objs: Vec<Vec<f64>> = self.front.iter().map(|s| s.objectives.clone()).collect();
+        match reference {
+            Some(r) => hypervolume(&objs, r),
+            None => hypervolume(&objs, &nadir_reference(&objs)),
+        }
+    }
+}
+
+/// A reference point just beyond the worst corner of `objs`: per objective, the
+/// maximum value plus 10% of its observed spread (or `+1` for a flat axis).
+/// Empty input yields an empty reference.
+pub fn nadir_reference(objs: &[Vec<f64>]) -> Vec<f64> {
+    if objs.is_empty() {
+        return Vec::new();
+    }
+    let m = objs[0].len();
+    (0..m)
+        .map(|k| {
+            let mut lo = f64::INFINITY;
+            let mut hi = f64::NEG_INFINITY;
+            for o in objs {
+                lo = lo.min(o[k]);
+                hi = hi.max(o[k]);
+            }
+            let span = hi - lo;
+            hi + if span > 0.0 { 0.1 * span } else { 1.0 }
+        })
+        .collect()
+}
+
 /// `true` if `a` Pareto-dominates `b` (minimization): no worse in every
 /// objective and strictly better in at least one.
 pub fn dominates(a: &[f64], b: &[f64]) -> bool {
@@ -74,6 +111,79 @@ pub fn dominates(a: &[f64], b: &[f64]) -> bool {
         }
     }
     strictly_better
+}
+
+/// Non-dominated subset of `pts` (minimization), deduplicated.
+fn non_dominated(pts: &[Vec<f64>]) -> Vec<Vec<f64>> {
+    let mut out: Vec<Vec<f64>> = Vec::new();
+    for (i, p) in pts.iter().enumerate() {
+        let dominated = pts
+            .iter()
+            .enumerate()
+            .any(|(j, q)| j != i && dominates(q, p));
+        if !dominated && !out.iter().any(|o| o == p) {
+            out.push(p.clone());
+        }
+    }
+    out
+}
+
+/// Hypervolume indicator: the volume of objective space that is dominated by
+/// `front` and bounded above by `reference` (minimization — larger is better).
+///
+/// It is the standard quality metric for comparing Pareto-front approximations,
+/// rewarding both convergence (closeness to the true front) and spread, with no
+/// reference front required. Uses the WFG algorithm (While et al., 2012), exact
+/// for any number of objectives.
+///
+/// `reference` must be a point each counted solution beats in every objective
+/// (component-wise larger than the front). Points not strictly better than
+/// `reference` in all objectives contribute nothing. To compare two fronts the
+/// reference point must be identical for both.
+///
+/// # Example
+/// ```
+/// use pso_core::mopso::hypervolume;
+/// // The staircase (1,3), (2,2), (3,1) under reference (4,4) covers area 6.
+/// let front = [vec![1.0, 3.0], vec![2.0, 2.0], vec![3.0, 1.0]];
+/// let hv = hypervolume(&front, &[4.0, 4.0]);
+/// assert!((hv - 6.0).abs() < 1e-9);
+/// ```
+pub fn hypervolume(front: &[Vec<f64>], reference: &[f64]) -> f64 {
+    let pts: Vec<Vec<f64>> = front
+        .iter()
+        .filter(|p| {
+            p.len() == reference.len() && p.iter().zip(reference).all(|(x, r)| x < r)
+        })
+        .cloned()
+        .collect();
+    wfg(&non_dominated(&pts), reference)
+}
+
+/// WFG hypervolume of a non-dominated point set: the sum of each point's
+/// *exclusive* contribution. Order-independent.
+fn wfg(pl: &[Vec<f64>], reference: &[f64]) -> f64 {
+    (0..pl.len()).map(|k| exclhv(pl, k, reference)).sum()
+}
+
+/// Exclusive hypervolume of `pl[k]`: its full box minus the part already
+/// covered by the points that follow it (limited from below by `pl[k]`).
+fn exclhv(pl: &[Vec<f64>], k: usize, reference: &[f64]) -> f64 {
+    let incl: f64 = pl[k]
+        .iter()
+        .zip(reference)
+        .map(|(x, r)| (r - x).max(0.0))
+        .product();
+    incl - wfg(&non_dominated(&limit_set(pl, k)), reference)
+}
+
+/// The points after `k`, each pushed away from the origin to the worse
+/// (component-wise max, for minimization) of itself and `pl[k]`.
+fn limit_set(pl: &[Vec<f64>], k: usize) -> Vec<Vec<f64>> {
+    pl[k + 1..]
+        .iter()
+        .map(|q| pl[k].iter().zip(q).map(|(a, b)| a.max(*b)).collect())
+        .collect()
 }
 
 /// NSGA-II crowding distance for a set of objective vectors (larger = more

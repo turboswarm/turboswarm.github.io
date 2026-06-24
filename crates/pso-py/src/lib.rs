@@ -661,6 +661,59 @@ impl PyParetoFront {
     fn __repr__(&self) -> String {
         format!("ParetoFront(size={})", self.positions.len())
     }
+
+    /// Hypervolume of this front: the volume of objective space dominated by it
+    /// and bounded by ``reference`` (minimization — larger is better). The
+    /// standard single-indicator measure of front quality (convergence + spread).
+    ///
+    /// Args:
+    ///     reference (list[float] | None): the bounding "worst" point, with one
+    ///         value per objective. Each value must exceed the front in that
+    ///         objective. If ``None``, it is derived from the front's nadir
+    ///         (worst value per objective + 10% of its spread); convenient for a
+    ///         single run but **not** comparable across runs — pass an explicit,
+    ///         shared reference when comparing fronts.
+    ///
+    /// Returns:
+    ///     float: the hypervolume (``0.0`` for an empty front).
+    #[pyo3(signature = (reference = None))]
+    fn hypervolume(&self, reference: Option<Vec<f64>>) -> PyResult<f64> {
+        if self.objectives.is_empty() {
+            return Ok(0.0);
+        }
+        let n_obj = self.objectives[0].len();
+        let reference = match reference {
+            Some(r) => {
+                if r.len() != n_obj {
+                    return Err(PyValueError::new_err(format!(
+                        "reference must have one value per objective ({n_obj}), got {}",
+                        r.len()
+                    )));
+                }
+                r
+            }
+            None => pso_core::mopso::nadir_reference(&self.objectives),
+        };
+        Ok(pso_core::mopso::hypervolume(&self.objectives, &reference))
+    }
+}
+
+/// Hypervolume of an arbitrary set of objective vectors (minimization).
+///
+/// A free-standing version of :meth:`ParetoFront.hypervolume` for fronts not
+/// produced by ``minimize_multi`` (e.g. a reference front, or one loaded from
+/// disk for benchmarking).
+///
+/// Args:
+///     front (list[list[float]]): objective vectors, one per solution.
+///     reference (list[float]): the bounding "worst" point, one value per
+///         objective; each value must exceed the front in that objective.
+///
+/// Returns:
+///     float: the hypervolume dominated by ``front`` under ``reference``.
+#[pyfunction(name = "hypervolume")]
+fn py_hypervolume(front: Vec<Vec<f64>>, reference: Vec<f64>) -> f64 {
+    pso_core::mopso::hypervolume(&front, &reference)
 }
 
 /// Common multi-objective driver. Evaluates a Python callable that returns a
@@ -849,6 +902,7 @@ fn benchmark_info(name: &str) -> PyResult<(f64, f64)> {
 fn turboswarm_native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(minimize, m)?)?;
     m.add_function(wrap_pyfunction!(minimize_multi, m)?)?;
+    m.add_function(wrap_pyfunction!(py_hypervolume, m)?)?;
     m.add_function(wrap_pyfunction!(benchmark_info, m)?)?;
     m.add_class::<PyPsoResult>()?;
     m.add_class::<PyParetoFront>()?;

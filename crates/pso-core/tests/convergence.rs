@@ -419,6 +419,55 @@ fn mopso_finds_pareto_front() {
 }
 
 #[test]
+fn hypervolume_matches_known_values_and_is_monotone() {
+    use pso_core::mopso::hypervolume;
+
+    // Staircase under reference (4,4): exact dominated area is 6.
+    let front = [vec![1.0, 3.0], vec![2.0, 2.0], vec![3.0, 1.0]];
+    assert!((hypervolume(&front, &[4.0, 4.0]) - 6.0).abs() < 1e-9);
+
+    // A dominated point adds nothing; a dominating point can only increase HV.
+    let with_dominated = [vec![1.0, 3.0], vec![2.0, 2.0], vec![3.0, 1.0], vec![3.0, 3.0]];
+    assert!((hypervolume(&with_dominated, &[4.0, 4.0]) - 6.0).abs() < 1e-9);
+    let better = [vec![0.5, 3.0], vec![2.0, 2.0], vec![3.0, 1.0]];
+    assert!(hypervolume(&better, &[4.0, 4.0]) > 6.0);
+
+    // Points not strictly better than the reference contribute nothing.
+    assert_eq!(hypervolume(&[vec![4.0, 1.0]], &[4.0, 4.0]), 0.0);
+
+    // Three objectives: a single point fills the box from it to the reference.
+    let one = [vec![1.0, 1.0, 1.0]];
+    assert!((hypervolume(&one, &[3.0, 3.0, 3.0]) - 8.0).abs() < 1e-9);
+}
+
+#[test]
+fn mopso_hypervolume_rewards_a_converged_front() {
+    use pso_core::mopso::{Mopso, MopsoParams};
+    let space = ContinuousSpace::new(vec![(-5.0, 5.0)]);
+    let f = |x: &[f64]| vec![x[0] * x[0], (x[0] - 2.0).powi(2)];
+
+    let params = MopsoParams {
+        n_particles: 80,
+        max_iterations: 80,
+        archive_size: 50,
+        seed: Some(42),
+        mutation_rate: 0.1,
+    };
+    let res = Mopso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), params).minimize(f);
+
+    // Shared reference so the fronts are comparable. The converged front must
+    // dominate (much higher HV than) a deliberately poor, off-front sample.
+    let reference = [8.0, 8.0];
+    let good = res.hypervolume(Some(&reference));
+    let poor = pso_core::mopso::hypervolume(&[vec![4.0, 6.0], vec![6.0, 4.0]], &reference);
+    assert!(good > 0.0);
+    assert!(good > poor, "converged HV {good} should beat poor HV {poor}");
+
+    // The auto-reference path (nadir of the front) is also well-defined.
+    assert!(res.hypervolume(None) > 0.0);
+}
+
+#[test]
 fn mixed_space_respects_per_dimension_types() {
     use pso_core::spaces::VarType::*;
     // Dim 0 real (opt 1.5), dim 1 integer (opt 3), dim 2 binary (opt 1).

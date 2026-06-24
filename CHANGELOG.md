@@ -3,6 +3,15 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- **Hypervolume** quality indicator for Pareto fronts
+  (`pso_core::mopso::hypervolume`, the WFG algorithm — exact for any number of
+  objectives). Exposed in Python as `ParetoFront.hypervolume(reference=None)`
+  (auto reference from the front's nadir when omitted) and the standalone
+  `turboswarm.hypervolume(front, reference)`.
+
 ## [0.1.0] — 2026-06-24
 
 First public release: `turboswarm` on PyPI and `pso-core` on crates.io.

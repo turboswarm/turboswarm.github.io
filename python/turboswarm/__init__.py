@@ -27,6 +27,7 @@ import logging
 from .turboswarm_native import (
     minimize,
     minimize_multi,
+    hypervolume,
     PsoResult,
     ParetoFront,
     benchmark_info,
@@ -42,6 +43,7 @@ __version__ = "0.1.0"
 __all__ = [
     "minimize",
     "minimize_multi",
+    "hypervolume",
     "PsoResult",
     "ParetoFront",
     "benchmark_info",
