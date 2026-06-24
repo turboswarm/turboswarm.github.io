@@ -66,7 +66,10 @@ Check off each task as you progress. Phase 1 is already done and verified.
 - [x] Polished API in `python/turboswarm/__init__.py` (`import turboswarm`).
 - [x] Expose Phase 2 variants/topologies by name (`constriction`,
       `ring`, `vonneumann`) + new native benchmarks.
-- [ ] Publish to TestPyPI.
+- [~] Publish to TestPyPI — **WON'T DO** (superseded). TestPyPI was a dry-run
+      step before the first public release; `turboswarm` is now published
+      directly to real PyPI (and `turboswarm-core` to crates.io) via the tagged
+      release workflows, so a TestPyPI upload no longer adds value.
 
 ## ✅ Phase 4 — Visualization and notebooks (DONE)
 - [x] `viz.plot_convergence` with matplotlib.
