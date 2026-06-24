@@ -9,6 +9,7 @@
   <a href="https://turboswarm.github.io/"><img src="https://img.shields.io/badge/docs-turboswarm.github.io-3f51b5" alt="Docs"></a>
   <img src="https://img.shields.io/pypi/pyversions/turboswarm?logo=python&logoColor=white" alt="Python versions">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT">
+  <a href="https://doi.org/10.5281/zenodo.20832446"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.20832446.svg" alt="DOI"></a>
 </p>
 
 # turboswarm

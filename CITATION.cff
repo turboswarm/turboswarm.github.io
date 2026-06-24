@@ -10,6 +10,7 @@ authors:
 repository-code: "https://github.com/turboswarm/turboswarm.github.io"
 url: "https://turboswarm.github.io"
 license: MIT
+doi: 10.5281/zenodo.20832446
 version: 0.2.2
 date-released: "2026-06-24"
 keywords:
