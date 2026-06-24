@@ -427,7 +427,12 @@ fn hypervolume_matches_known_values_and_is_monotone() {
     assert!((hypervolume(&front, &[4.0, 4.0]) - 6.0).abs() < 1e-9);
 
     // A dominated point adds nothing; a dominating point can only increase HV.
-    let with_dominated = [vec![1.0, 3.0], vec![2.0, 2.0], vec![3.0, 1.0], vec![3.0, 3.0]];
+    let with_dominated = [
+        vec![1.0, 3.0],
+        vec![2.0, 2.0],
+        vec![3.0, 1.0],
+        vec![3.0, 3.0],
+    ];
     assert!((hypervolume(&with_dominated, &[4.0, 4.0]) - 6.0).abs() < 1e-9);
     let better = [vec![0.5, 3.0], vec![2.0, 2.0], vec![3.0, 1.0]];
     assert!(hypervolume(&better, &[4.0, 4.0]) > 6.0);
@@ -461,7 +466,10 @@ fn mopso_hypervolume_rewards_a_converged_front() {
     let good = res.hypervolume(Some(&reference));
     let poor = pso_core::mopso::hypervolume(&[vec![4.0, 6.0], vec![6.0, 4.0]], &reference);
     assert!(good > 0.0);
-    assert!(good > poor, "converged HV {good} should beat poor HV {poor}");
+    assert!(
+        good > poor,
+        "converged HV {good} should beat poor HV {poor}"
+    );
 
     // The auto-reference path (nadir of the front) is also well-defined.
     assert!(res.hypervolume(None) > 0.0);

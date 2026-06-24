@@ -152,9 +152,7 @@ fn non_dominated(pts: &[Vec<f64>]) -> Vec<Vec<f64>> {
 pub fn hypervolume(front: &[Vec<f64>], reference: &[f64]) -> f64 {
     let pts: Vec<Vec<f64>> = front
         .iter()
-        .filter(|p| {
-            p.len() == reference.len() && p.iter().zip(reference).all(|(x, r)| x < r)
-        })
+        .filter(|p| p.len() == reference.len() && p.iter().zip(reference).all(|(x, r)| x < r))
         .cloned()
         .collect();
     wfg(&non_dominated(&pts), reference)
