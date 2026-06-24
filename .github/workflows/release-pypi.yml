@@ -3,10 +3,10 @@ name: release-pypi
 # Builds abi3 wheels (one per platform, CPython >= 3.9) and an sdist, then
 # publishes `turboswarm` to PyPI when a version tag is pushed.
 #
-# Publishing uses PyPI Trusted Publishing (OIDC) — configure a publisher on
-# PyPI for project "turboswarm", repo "turboswarm/turboswarm.github.io",
-# workflow "release-pypi.yml", environment "pypi". To use an API token instead,
-# add `password: ${{ secrets.PYPI_API_TOKEN }}` to the publish step.
+# Publishing uses a PyPI API token stored as the repository secret
+# PYPI_API_TOKEN. (For the first upload, use an account-scoped token, since the
+# project does not exist yet.) To switch to Trusted Publishing instead, drop the
+# `password` line and add `id-token: write` permission + a configured publisher.
 #
 # Trigger with:  git tag v0.1.0 && git push --tags
 
@@ -92,9 +92,6 @@ jobs:
   release:
     needs: [linux, macos, windows, sdist]
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write # required for Trusted Publishing
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -104,3 +101,4 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
+          password: ${{ secrets.PYPI_API_TOKEN }}
