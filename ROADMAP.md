@@ -96,3 +96,50 @@ Check off each task as you progress. Phase 1 is already done and verified.
       `grid_divisions=` in `minimize_multi` / `MopsoParams.grid_divisions`.
 - [x] Equality constraints (`equality_constraints=`, quadratic penalty) and a
       `repair=` operator in the Python `minimize`.
+
+## Backlog — candidate improvements (not scheduled)
+
+Unprioritized ideas, grouped by the project's priorities (viz > comparison >
+clarity > performance). Pull into a phase when picked up.
+
+### Visualization (priority #1)
+- [ ] **WASM build** of the core (`wasm-bindgen`) → interactive swarm animations
+      in the browser / on the web. Strong differentiator vs `pyswarms`.
+- [ ] **Interactive backend (Plotly)** alongside matplotlib: zoom, per-particle
+      hover, iteration slider.
+- [ ] **3D / projected animation** for >2D problems (PCA or dimension pairs),
+      lifting the current 2D-only limit of `animate_swarm`.
+- [ ] **History export** to CSV/Parquet for downstream analysis.
+
+### Algorithm comparison (priority #2)
+- [ ] **Benchmarking suite with statistical tests**: multi-seed runner +
+      Wilcoxon / Friedman + ranking tables.
+- [ ] **Official CEC shift/rotation data** loader (complete CEC functions, not
+      just the base forms already added).
+- [ ] **Performance profiles / aggregated convergence plots** across functions.
+- [ ] **More Pareto-front metrics**: IGD, spacing, spread (today only
+      hypervolume).
+
+### Variants & operators (extensibility = core's reason to exist)
+- [ ] **Classic variants**, one `Velocity` impl each: Bare-bones PSO (Kennedy),
+      QPSO (quantum-behaved), CLPSO (comprehensive learning), SPSO-2011
+      (rotation-invariant), APSO (adaptive / self-tuning).
+- [ ] **GCPSO** (guaranteed convergence) + stagnation-triggered restart.
+- [ ] **Quasi-random initialization** (Sobol / LHS) as an alternative to uniform.
+- [ ] **Niching / multimodal** (speciation or lbest-ring niching).
+- [ ] **Alternative constraint handling**: Deb's feasibility rules or
+      ε-constraint (today only penalty/repair).
+- [ ] **Advanced MOPSO**: SMPSO (speed-constrained) or MOEA/D-style decomposition.
+
+### Clarity / DX (priority #3)
+- [ ] **Type stubs (`.pyi`)** for the native module (autocompletion + mypy).
+- [ ] **Checkpoint / serialization** of optimizer state (resume long runs).
+- [ ] **Documentation site** (mkdocs + docs.rs) with the "implement a trait =
+      new variant" guide.
+
+### Performance (priority #4)
+- [ ] **Flat contiguous swarm matrix** (1D `Vec<f64>` + strides) instead of
+      `Vec<Vec<f64>>` → better cache locality; closes the NumPy gap on cheap
+      objectives.
+- [ ] **GPU acceleration** (wgpu) for massive batch objective evaluation.
+- [ ] **Cooperative coevolution (CCPSO2)** for high-dimensional problems.
