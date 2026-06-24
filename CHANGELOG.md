@@ -3,6 +3,15 @@
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.2.2] — 2026-06-24
+
+### Added
+- Reproducible benchmark suite (`benches/bench_suite.py`) comparing turboswarm
+  against `pyswarms`, `pyswarm` and `pymoo` across functions and dimensions,
+  with CSV results, machine provenance and a speedup figure.
+- JOSS submission scaffolding: `paper.md`, `paper.bib`, `CITATION.cff` and
+  `CONTRIBUTING.md`.
+
 ## [0.2.1] — 2026-06-24
 
 ### Fixed

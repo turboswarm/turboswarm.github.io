@@ -10,8 +10,8 @@ authors:
 repository-code: "https://github.com/turboswarm/turboswarm.github.io"
 url: "https://turboswarm.github.io"
 license: MIT
-version: 0.2.1
-date-released: "2026-06-24"  # TODO: set to the actual release date of v0.2.1
+version: 0.2.2
+date-released: "2026-06-24"
 keywords:
   - particle swarm optimization
   - optimization
