@@ -13,7 +13,7 @@ description = "Particle Swarm Optimization with a Rust core"
 readme = "python/README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "Jose L. Salmeron", email = "joseluis.salmeron@gmail.com" }]
+authors = [{ name = "Jose L. Salmeron" }]
 keywords = ["pso", "optimization", "swarm", "metaheuristics"]
 classifiers = [
     "Development Status :: 4 - Beta",
