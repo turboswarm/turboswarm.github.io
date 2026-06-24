@@ -8,7 +8,7 @@ build-backend = "maturin"
 
 [project]
 name = "turboswarm"
-version = "0.2.0"
+version = "0.2.1"
 description = "Particle Swarm Optimization with a Rust core"
 readme = "python/README.md"
 requires-python = ">=3.9"
@@ -30,9 +30,11 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/turboswarm/turboswarm.github.io"
+Homepage = "https://turboswarm.github.io"
+Documentation = "https://turboswarm.github.io"
 Repository = "https://github.com/turboswarm/turboswarm.github.io"
 Issues = "https://github.com/turboswarm/turboswarm.github.io/issues"
+Enterprise = "https://salmeron.cunef.edu"
 
 [project.optional-dependencies]
 notebooks = ["jupyter", "plotly"]
