@@ -7,6 +7,11 @@ Reference generated from the docstrings of the `turboswarm` package.
       members:
         - minimize
         - PsoResult
+        - minimize_multi
+        - ParetoFront
+        - hypervolume
+        - sweep
+        - SweepResult
         - benchmark_info
 
 ## Visualization
@@ -17,6 +22,8 @@ Reference generated from the docstrings of the `turboswarm` package.
         - plot_convergence
         - compare
         - animate_swarm
+        - plot_pareto
+        - plot_sensitivity
 
 ## Pure-Python benchmarks
 

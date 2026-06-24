@@ -44,6 +44,7 @@ nav:
       - Constraints: guide/constraints.md
       - Boundary handling: guide/boundaries.md
       - Multi-objective: guide/multiobjective.md
+      - Sensitivity analysis: guide/sensitivity.md
       - Visualization: guide/visualization.md
   - Comparison: comparison.md
   - Architecture: architecture.md

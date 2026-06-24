@@ -6,6 +6,12 @@ this project follows [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **Equality constraints and a repair operator** in `minimize`:
+  `equality_constraints=` takes callables `h(x)` (feasible when `h(x) == 0`) and
+  adds a quadratic penalty `penalty * sum(h(x)**2)`; `repair=` takes an operator
+  `repair(x) -> x'` applied to each candidate before evaluation (and to the
+  returned `best_position`, so the reported solution stays consistent). Both
+  require a Python objective and are rejected on the native/vectorized paths.
 - **Hyperparameter sensitivity analysis** (`turboswarm.sweep`): runs PSO over a
   Cartesian product of hyperparameter value lists (`grid={"w": [...], "c1":
   [...]}`), optionally repeated over several seeds, and returns a `SweepResult`

@@ -253,7 +253,25 @@ fn build_topology(
 ///         quadratic penalty ``penalty * sum(max(0, g(x))**2)`` is added to the
 ///         objective. Requires ``objective`` to be a Python callable (not a
 ///         native benchmark name). Defaults to ``None``.
-///     penalty (float): weight of the constraint penalty. Defaults to ``1e6``.
+///     penalty (float): weight of the constraint penalty (shared by the
+///         inequality and equality terms). Defaults to ``1e6``.
+///     equality_constraints (list[callable] | None): equality constraints, each
+///         a callable ``h(x) -> float`` that is feasible when ``h(x) == 0``. A
+///         quadratic penalty ``penalty * sum(h(x)**2)`` is added to the
+///         objective. Like ``constraints``, requires a Python objective (not a
+///         native benchmark). Defaults to ``None``. Note: equality constraints
+///         are sensitive to ``penalty`` — a very large value (e.g. the ``1e6``
+///         default) makes the feasible valley so steep the swarm converges onto
+///         a feasible but sub-optimal point; moderate weights (``1e3``-``1e4``)
+///         usually balance feasibility and objective better. For hard equalities
+///         a ``repair`` operator is often more robust.
+///     repair (callable | None): a repair operator ``repair(x) -> x'`` applied
+///         to each candidate before it is evaluated, mapping infeasible points
+///         back to (or towards) the feasible region. The objective and the
+///         constraints see the repaired point, and the returned
+///         ``best_position`` is repaired too, so the reported solution is
+///         consistent with its value. Requires a Python objective. Defaults to
+///         ``None``.
 ///     binary (bool): if ``True``, optimize over binary variables ``{0, 1}``
 ///         (a {0,1} integer space); the dimension is taken from ``bounds``.
 ///         Defaults to ``False``.
@@ -324,6 +342,8 @@ fn build_topology(
     vectorized = false,
     var_types = None,
     dim = None,
+    equality_constraints = None,
+    repair = None,
 ))]
 fn minimize(
     py: Python<'_>,
@@ -353,6 +373,8 @@ fn minimize(
     vectorized: bool,
     var_types: Option<Vec<String>>,
     dim: Option<usize>,
+    equality_constraints: Option<Vec<PyObject>>,
+    repair: Option<PyObject>,
 ) -> PyResult<PyPsoResult> {
     let bounds = resolve_bounds(py, &bounds, dim)?;
     let params = PsoParams {
@@ -378,10 +400,13 @@ fn minimize(
     let native_name: Option<String> = objective.extract(py).ok();
 
     let constraints = constraints.unwrap_or_default();
-    if !constraints.is_empty() && native_name.is_some() {
+    let equality = equality_constraints.unwrap_or_default();
+    let needs_python_obj = !constraints.is_empty() || !equality.is_empty() || repair.is_some();
+    if needs_python_obj && native_name.is_some() {
         return Err(PyValueError::new_err(
-            "constraints require a Python objective callable, not a native \
-             benchmark name; pass a function as the objective",
+            "constraints, equality_constraints and repair require a Python \
+             objective callable, not a native benchmark name; pass a function \
+             as the objective",
         ));
     }
 
@@ -408,6 +433,8 @@ fn minimize(
             false,
             constraints,
             penalty,
+            equality,
+            repair,
             callback,
             vectorized,
         )
@@ -433,6 +460,8 @@ fn minimize(
             true,
             constraints,
             penalty,
+            equality,
+            repair,
             callback,
             vectorized,
         )
@@ -449,6 +478,8 @@ fn minimize(
             false,
             constraints,
             penalty,
+            equality,
+            repair,
             callback,
             vectorized,
         )
@@ -469,6 +500,8 @@ fn run<S>(
     is_integer: bool,
     constraints: Vec<PyObject>,
     penalty: f64,
+    equality: Vec<PyObject>,
+    repair: Option<PyObject>,
     callback: Option<PyObject>,
     vectorized: bool,
 ) -> PyResult<PyPsoResult>
@@ -495,9 +528,11 @@ where
                 "vectorized=True requires a Python objective callable, not a native benchmark",
             ));
         }
-        if !constraints.is_empty() || callback.is_some() {
+        if !constraints.is_empty() || !equality.is_empty() || repair.is_some() || callback.is_some()
+        {
             return Err(PyValueError::new_err(
-                "vectorized=True does not support constraints or callback yet",
+                "vectorized=True does not support constraints, equality_constraints, \
+                 repair or callback yet",
             ));
         }
         // The swarm is passed as a contiguous NumPy array (one buffer copy, no
@@ -561,12 +596,30 @@ where
             let xf: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
             return f(&xf);
         }
-        let args = if is_integer {
-            let xs: Vec<i64> = x.iter().map(|&v| v.to_f64() as i64).collect();
-            PyList::new_bound(py, xs).into_any()
-        } else {
-            let xs: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
-            PyList::new_bound(py, xs).into_any()
+        // Build the argument list. With a repair operator, the candidate is
+        // mapped to the feasible region first and everything downstream (the
+        // objective and the constraints) sees the repaired point.
+        let mk_args = |vals: &[f64]| -> Bound<'_, PyAny> {
+            if is_integer {
+                let xs: Vec<i64> = vals.iter().map(|&v| v as i64).collect();
+                PyList::new_bound(py, xs).into_any()
+            } else {
+                PyList::new_bound(py, vals.to_vec()).into_any()
+            }
+        };
+        let raw_vals: Vec<f64> = x.iter().map(|&v| v.to_f64()).collect();
+        let args = match &repair {
+            None => mk_args(&raw_vals),
+            Some(r) => match r
+                .call1(py, (mk_args(&raw_vals),))
+                .and_then(|o| o.extract::<Vec<f64>>(py))
+            {
+                Ok(repaired) => mk_args(&repaired),
+                Err(e) => {
+                    *call_error.borrow_mut() = Some(e);
+                    return f64::INFINITY;
+                }
+            },
         };
         let base = match objective
             .call1(py, (args.clone(),))
@@ -579,6 +632,7 @@ where
             }
         };
         let mut penalty_term = 0.0;
+        // Inequality g(x) <= 0: penalize the positive violation, squared.
         for g in &constraints {
             match g
                 .call1(py, (args.clone(),))
@@ -587,6 +641,21 @@ where
                 Ok(gv) => {
                     let viol = gv.max(0.0);
                     penalty_term += viol * viol;
+                }
+                Err(e) => {
+                    *call_error.borrow_mut() = Some(e);
+                    return f64::INFINITY;
+                }
+            }
+        }
+        // Equality h(x) == 0: penalize the squared deviation from zero.
+        for h in &equality {
+            match h
+                .call1(py, (args.clone(),))
+                .and_then(|r| r.extract::<f64>(py))
+            {
+                Ok(hv) => {
+                    penalty_term += hv * hv;
                 }
                 Err(e) => {
                     *call_error.borrow_mut() = Some(e);
@@ -620,7 +689,19 @@ where
     if let Some(e) = call_error.into_inner() {
         return Err(e);
     }
-    Ok(to_py_result(result))
+    let mut out = to_py_result(result);
+    // Report the repaired solution so best_position is consistent with the
+    // best_value the search actually optimized (which already used the repair).
+    if let Some(r) = &repair {
+        let raw = if is_integer {
+            let xs: Vec<i64> = out.best_position.iter().map(|&v| v as i64).collect();
+            PyList::new_bound(py, xs).into_any()
+        } else {
+            PyList::new_bound(py, out.best_position.clone()).into_any()
+        };
+        out.best_position = r.call1(py, (raw,))?.extract::<Vec<f64>>(py)?;
+    }
+    Ok(out)
 }
 
 fn to_py_result<T>(r: PsoResult<T>) -> PyPsoResult

@@ -47,6 +47,22 @@ pso.viz.plot_pareto(front)
 plt.show()
 ```
 
+## Measuring front quality: hypervolume
+
+The **hypervolume** is the volume of objective space dominated by the front and
+bounded by a *reference* point (for minimization — larger is better). It rewards
+both convergence and spread in a single number, with no reference front needed:
+
+```python
+hv = front.hypervolume([8.0, 8.0])   # explicit reference point
+hv = front.hypervolume()             # reference auto-derived from the front's nadir
+```
+
+To **compare** two fronts, pass the *same* reference point to both. There is
+also a standalone `pso.hypervolume(objectives, reference)` for fronts not
+produced by `minimize_multi`. The metric uses the WFG algorithm, exact for any
+number of objectives.
+
 ## From Rust
 
 ```rust

@@ -78,4 +78,5 @@ Check off each task as you progress. Phase 1 is already done and verified.
 - [x] MOPSO hypervolume metric (`mopso::hypervolume`, WFG algorithm;
       `ParetoFront.hypervolume` in Python).
 - [ ] MOPSO refinements: grid-based archive (Coello's).
-- [ ] Equality constraints and repair methods.
+- [x] Equality constraints (`equality_constraints=`, quadratic penalty) and a
+      `repair=` operator in the Python `minimize`.

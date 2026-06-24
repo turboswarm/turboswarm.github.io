@@ -65,6 +65,45 @@ def test_constraints_penalty():
     assert abs(sum(r.best_position) - 2) < 0.1
 
 
+def test_equality_constraint_penalty():
+    # min x0^2 + x1^2 s.t. x0 + x1 = 2  ->  optimum (1, 1).
+    r = pso.minimize(
+        lambda x: x[0] ** 2 + x[1] ** 2,
+        bounds=(-5, 5), dim=2,
+        equality_constraints=[lambda x: x[0] + x[1] - 2.0],
+        penalty=1e4, seed=1, n_particles=40, max_iter=300,
+    )
+    assert abs(sum(r.best_position) - 2) < 0.05
+    assert abs(r.best_position[0] - 1) < 0.1 and abs(r.best_position[1] - 1) < 0.1
+
+
+def test_repair_projects_and_reports_repaired_solution():
+    # Repair projects onto the simplex sum(x) = 1; objective pulls to (0.7, 0.3).
+    def repair(x):
+        s = sum(x) or 1.0
+        return [xi / s for xi in x]
+
+    r = pso.minimize(
+        lambda x: (x[0] - 0.7) ** 2 + (x[1] - 0.3) ** 2,
+        bounds=[(0, 1)] * 2, repair=repair, seed=1, n_particles=40, max_iter=200,
+    )
+    # The reported position must be the repaired (feasible) one.
+    assert abs(sum(r.best_position) - 1.0) < 1e-9
+    assert abs(r.best_position[0] - 0.7) < 0.05
+
+
+def test_equality_and_repair_reject_native_and_vectorized():
+    import pytest
+    with pytest.raises(ValueError):
+        pso.minimize("sphere", bounds=(-5, 5), dim=2,
+                     equality_constraints=[lambda x: x[0]])
+    with pytest.raises(ValueError):
+        pso.minimize("sphere", bounds=(-5, 5), dim=2, repair=lambda x: x)
+    with pytest.raises(ValueError):
+        pso.minimize(lambda x: x[0], bounds=[(-5, 5)] * 2,
+                     vectorized=True, repair=lambda x: x)
+
+
 def test_callback_can_stop():
     seen = []
 
