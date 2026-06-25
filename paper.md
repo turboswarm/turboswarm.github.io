@@ -106,8 +106,9 @@ comparing variants under identical conditions.
 # Performance
 
 To illustrate the benefit of the compiled core we compare `turboswarm` against
-`pyswarms` [@miranda2018pyswarms], `pyswarm` and `pymoo` [@blank2020pymoo] on
-five standard functions (sphere, rastrigin, ackley, rosenbrock, griewank) and
+`pyswarms` [@miranda2018pyswarms], `pyswarm`, `pymoo` [@blank2020pymoo] and DEAP
+[@fortin2012deap] on five standard functions (sphere, rastrigin, ackley,
+rosenbrock, griewank) and
 three dimensions (2, 10, 30), using an identical swarm configuration for every
 library (40 particles, 200 iterations, $w = 0.729$, $c_1 = c_2 = 1.49445$;
 median over five seeds after a warm-up). Through its native objective path
@@ -117,7 +118,13 @@ competitor: roughly $3.5\times$ at two dimensions, narrowing towards $2\times$
 at thirty dimensions as the vectorized NumPy objective amortizes more of the
 per-iteration overhead. Solution quality was comparable across libraries;
 `turboswarm` reached the best objective in several cases, while `pymoo` did so
-on a few high-dimensional multimodal problems.
+on a few high-dimensional multimodal problems. DEAP, a general-purpose
+evolutionary-computation toolkit that provides a PSO recipe rather than a
+packaged solver (which we adapted to the same inertia rule and configuration),
+is the slowest baseline because its interpreter-bound, non-vectorized loop
+carries the most per-iteration overhead: `turboswarm`'s native path is a median
+$12\times$ faster (roughly $7$–$15\times$ across functions and dimensions) at
+comparable solution quality.
 
 ![Speedup of `turboswarm` (native objective path) over `pyswarms` across
 dimensions, for five benchmark functions.\label{fig:speedup}](benches/results/speedup.png)
