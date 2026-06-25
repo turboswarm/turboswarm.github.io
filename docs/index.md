@@ -48,6 +48,7 @@ the core. See [Architecture](architecture.md) and [Extending](extending.md).
         seed=1,
     )
     print(result.best_position, result.best_value)
+    # ≈ [0.0, 0.0] with best_value ≈ 3e-4 — near the rastrigin optimum (f = 0)
     ```
 
 === "Rust"
@@ -62,6 +63,7 @@ the core. See [Architecture](architecture.md) and [Extending](extending.md).
 
     let result = Pso::new(space, velocity, GlobalBest::new(), params)
         .minimize(rastrigin);
+    // result.best_position ≈ [0.0, 0.0], result.best_value ≈ 0 (rastrigin optimum)
     ```
 
 Start with [Installation](installation.md) and the

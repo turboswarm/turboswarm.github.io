@@ -94,6 +94,7 @@ runs = {
 }
 for name, r in runs.items():
     print(name, r.best_value)
+# inertia/global ≈ 2e-10, fips/ring ≈ 2e-4 — both essentially reach the optimum (f = 0)
 ```
 
 To plot the comparison, see [Visualization](guide/visualization.md). For a

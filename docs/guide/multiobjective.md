@@ -88,6 +88,9 @@ let params = MopsoParams { seed: Some(42), ..Default::default() };
 let res = Mopso::new(space, InertiaVelocity::new(0.729, 1.49445, 1.49445), params)
     .minimize(|x| vec![x.iter().map(|v| v * v).sum(),
                        x.iter().map(|v| (v - 2.0).powi(2)).sum()]);
+// `res.front` is the non-dominated set: each solution has a decision vector
+// with x ∈ [0, 2]² and its two objectives, tracing the trade-off front from
+// (f1 ≈ 0, f2 ≈ 8) to (f1 ≈ 8, f2 ≈ 0).
 for s in &res.front {
     println!("{:?} -> {:?}", s.position, s.objectives);
 }
