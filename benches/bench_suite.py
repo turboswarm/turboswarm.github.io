@@ -9,6 +9,9 @@ coefficients for every library. Each library is driven idiomatically:
   - pyswarms:             vectorized NumPy objective.
   - pyswarm:              scalar Python objective.
   - pymoo:                vectorized Problem, fixed-coefficient PSO.
+  - DEAP:                 scalar objective; DEAP ships no packaged PSO, so its
+                          canonical example recipe is used, adapted to the same
+                          inertia rule (w, c1, c2) and bound clamping for fairness.
 
 Methodology
 -----------
@@ -24,7 +27,7 @@ Outputs (under benches/results/):
   - speedup.png   : speedup of turboswarm (native) vs pyswarms across dimensions.
 
 Usage:
-    pip install pyswarms pyswarm pymoo
+    pip install pyswarms pyswarm pymoo deap
     python benches/bench_suite.py
     python benches/bench_suite.py --markdown   # also print a Markdown table
 
@@ -205,18 +208,60 @@ def run_pymoo(name, bound, dim):
     return timed_over_seeds(one)
 
 
+def run_deap(name, bound, dim):
+    # DEAP ships no packaged PSO, so we use its canonical example recipe,
+    # adapted to the same inertia rule (w, c1, c2) and bound clamping as the
+    # other libraries (its stock example uses U(0, phi) and no inertia weight).
+    import random
+    from deap import base, creator
+    if not hasattr(creator, "FitnessMin"):
+        creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
+    if not hasattr(creator, "Particle"):
+        creator.create("Particle", list, fitness=creator.FitnessMin,
+                       speed=list, best=None)
+    f = SCALAR[name]
+    pmin, pmax = -bound, bound
+
+    def one(seed):
+        random.seed(seed)
+        pop = []
+        for _ in range(N_PARTICLES):
+            part = creator.Particle(random.uniform(pmin, pmax) for _ in range(dim))
+            part.speed = [0.0] * dim
+            pop.append(part)
+        best = best_fit = None
+        for _ in range(ITERS):
+            for part in pop:
+                fit = f(part)
+                if part.best is None or part.best_fit > fit:
+                    part.best, part.best_fit = part[:], fit
+                if best is None or best_fit > fit:
+                    best, best_fit = part[:], fit
+            for part in pop:
+                for i in range(dim):
+                    v = (W * part.speed[i]
+                         + C1 * random.random() * (part.best[i] - part[i])
+                         + C2 * random.random() * (best[i] - part[i]))
+                    part.speed[i] = v
+                    xi = part[i] + v
+                    part[i] = pmax if xi > pmax else pmin if xi < pmin else xi
+        return best_fit
+    return timed_over_seeds(one)
+
+
 RUNNERS = [
     ("turboswarm (native)", run_turboswarm_native),
     ("turboswarm (py)", run_turboswarm_py),
     ("pyswarms", run_pyswarms),
     ("pyswarm", run_pyswarm),
     ("pymoo", run_pymoo),
+    ("DEAP", run_deap),
 ]
 
 
 def lib_versions():
     versions = {"turboswarm": getattr(ts, "__version__", "unknown")}
-    for mod in ("pyswarms", "pyswarm", "pymoo", "numpy"):
+    for mod in ("pyswarms", "pyswarm", "pymoo", "deap", "numpy"):
         try:
             versions[mod] = __import__(mod).__version__
         except Exception:
