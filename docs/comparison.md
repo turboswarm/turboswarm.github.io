@@ -1,97 +1,102 @@
-# Comparison with other PSO libraries
+# Comparison with other libraries
 
-How `turboswarm` compares to the two most-used Python PSO libraries,
-[`pyswarms`](https://github.com/ljvmiranda921/pyswarms) and
-[`pyswarm`](https://pypi.org/project/pyswarm/). The aim is an honest picture:
-each library has areas where it leads.
+How `turboswarm` compares to the most-used Python optimization libraries that
+include PSO: [`pyswarms`](https://github.com/ljvmiranda921/pyswarms),
+[`pyswarm`](https://pypi.org/project/pyswarm/),
+[`pymoo`](https://pymoo.org) and [`DEAP`](https://github.com/DEAP/deap). The aim
+is an honest picture — each leads somewhere.
 
 ## Feature comparison
 
-| Feature | turboswarm | pyswarms | pyswarm |
-|---------|:-----------|:---------|:--------|
-| Compute core | **Rust** (native, no GIL) | Python + NumPy | Pure Python |
-| Velocity variants | inertia, constriction, **FIPS** | inertia (global/local/general), binary | inertia/constriction |
-| Topologies | global, ring, Von Neumann, random | global, ring, Von Neumann, pyramid, random | global |
-| Real variables | ✅ | ✅ | ✅ |
-| Integer variables | ✅ (decode + discretization) | binary only | ✅ (`intvar`) |
-| Binary variables | ✅ (`binary=True`) | ✅ (BinaryPSO) | ✅ (`intvar`) |
-| Constraints | ✅ (inequality, penalty) | manual penalty | ✅ (inequality) |
-| Parallel evaluation | ✅ (`rayon`, from Rust) | ❌ | ❌ |
-| Multi-objective (MOPSO) | ✅ (`minimize_multi`) | ❌ | ❌ |
-| Early stopping | ✅ (`tol` + `patience`) | ✅ (`ftol`) | ✅ (`minfunc`/`patience`) |
-| Velocity clamp | ✅ (`v_max`) | ✅ | ❌ |
-| Built-in visualization | convergence, compare, **animate 2D** | cost history, contour, surface | ❌ |
-| Reproducible seed | ✅ (built-in, deterministic) | via global NumPy seed | ✅ |
-| Custom variant (extensibility) | ✅ (implement one trait) | ✅ (backend, more involved) | ❌ |
-| API languages | **Rust + Python** | Python | Python |
-| License | MIT | MIT | BSD-3 |
+| Feature | turboswarm | pyswarms | pyswarm | pymoo | DEAP |
+|---|:--|:--|:--|:--|:--|
+| Compute core | **Rust** (no GIL) | Python+NumPy | pure Python | Python+NumPy | pure Python |
+| Velocity variants | inertia, constriction, **FIPS** | inertia, binary | inertia/constriction | inertia (adaptive) | recipe (you write it) |
+| Topologies | global, ring, Von Neumann, random | global, ring, VN, pyramid, random | global | global | — |
+| Real / integer / binary / mixed | ✅ all, one API | real, binary | real, integer | real, integer | recipe |
+| Grey (interval) variables | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Constraints | ✅ penalty + repair | manual | ✅ inequality | ✅ rich | manual |
+| Multi-objective | ✅ MOPSO | ❌ | ❌ | ✅ **many MOEAs** | ✅ NSGA-II etc. |
+| Parallel evaluation | ✅ `rayon` (Rust) | ❌ | ❌ | ✅ | ✅ |
+| Built-in visualization | convergence, compare, **animate 2D** | cost/contour/surface | ❌ | ✅ (scatter, PCP) | ❌ |
+| Reproducible seed | ✅ deterministic | global NumPy seed | ✅ | ✅ | ✅ |
+| Extensibility | ✅ one trait | backend (involved) | ❌ | ✅ operators | ✅ toolbox |
+| Ecosystem integrations | SciPy, scikit-learn, Optuna, agents | — | — | — | — |
+| API languages | **Rust + Python** | Python | Python | Python | Python |
 
-**Where turboswarm leads:** a Rust core, the only one with FIPS + constriction
-out of the box, **multi-objective optimization (MOPSO)**, parallel evaluation,
-animated-swarm visualization, deterministic seeding, and a single API for real,
-integer *and* mixed variables with a one-trait extensibility model.
+**Where turboswarm leads:** a compiled Rust core (speed, below), FIPS +
+constriction and a **grey/interval** search space out of the box, animated-swarm
+visualization, deterministic seeding, a single API spanning real/integer/mixed
+variables with a one-trait extensibility model, and first-class
+[ecosystem integrations](guide/integrations.md) (a SciPy drop-in, `PSOSearchCV`,
+an Optuna sampler, an agent tool).
 
-**Where the others lead:** `pyswarms` has one extra topology — `pyramid`
-(Delaunay-based). turboswarm omits it on purpose: it needs a computational-
-geometry dependency and rarely beats Von Neumann or ring in practice. That is
-the only remaining gap.
+**Where the others lead:** `pymoo` and `DEAP` are broad evolutionary-computation
+frameworks — `pymoo` in particular has a large catalogue of multi-objective
+algorithms and operators well beyond MOPSO; `DEAP` is a flexible general toolbox
+(its PSO is an example recipe, not a packaged solver). `pyswarms` has one extra
+topology, `pyramid` (Delaunay-based), which turboswarm omits on purpose (it needs
+a computational-geometry dependency and rarely beats Von Neumann or ring).
 
 ## Performance
 
 Wall-clock time to optimize standard functions, **identical configuration for
 every library** (40 particles, 200 iterations, `w=0.729`, `c1=c2=1.49445`,
-dim = 10), median of 5 runs. `turboswarm` runs with `record_history=False` so
-it does the same work as the others.
+dim = 10), median of 5 seeds after a warm-up. `turboswarm` runs with
+`record_history=False` so it does the same work as the others. Each library is
+driven idiomatically: `pyswarms`/`pymoo` with a vectorized NumPy objective,
+`pyswarm`/`DEAP`/`turboswarm (py)` with a scalar Python callable, and
+`turboswarm (native)` with the benchmark computed in Rust.
 
-Each library is used **idiomatically**: `pyswarms` with a vectorized NumPy
-objective (its intended usage), `pyswarm` and the `turboswarm (py)` row with a
-scalar Python callable, and `turboswarm (native)` with the benchmark computed
-in Rust.
-
-| Function | turboswarm (native) | turboswarm (py) | pyswarms (vectorized) | pyswarm |
-|----------|--------------------:|----------------:|----------------------:|--------:|
-| sphere    | **~6.5 ms** | ~50 ms | ~21 ms | ~60 ms |
-| rastrigin | **~7 ms**   | ~80 ms | ~24 ms | ~105 ms |
-| ackley    | **~8 ms**   | ~88 ms | ~23 ms | ~120 ms |
+| Function (dim 10) | turboswarm (native) | turboswarm (py) | pyswarms | pyswarm | pymoo | DEAP |
+|---|--:|--:|--:|--:|--:|--:|
+| sphere    | **4.6 ms** | 25.0 ms | 11.6 ms | 33.1 ms | 227.8 ms | 40.5 ms |
+| rastrigin | **6.3 ms** | 52.0 ms | 14.6 ms | 57.6 ms | 231.9 ms | 57.3 ms |
+| ackley    | **5.2 ms** | 50.4 ms | 14.1 ms | 66.2 ms | 226.8 ms | 66.1 ms |
 
 !!! note "Read this honestly"
-    - `turboswarm` (native) is the **fastest** here — roughly **3× faster than
-      `pyswarms`** (vectorized NumPy) and **~10× faster than `pyswarm`**, at
-      equal or better solution quality.
-    - This relies on the Rust core *and* a lean loop: classic variants no longer
-      clone the whole neighborhood (only FIPS needs it) and scratch buffers are
-      reused. That roughly **halved** the native time.
+    - `turboswarm` (native) is the **fastest** across all functions and
+      dimensions tested — roughly **2.5× faster than `pyswarms`** (vectorized
+      NumPy), **~10× faster than `pyswarm`/`DEAP`** (pure-Python loops), and
+      **~40× faster than `pymoo`** (whose per-generation framework overhead
+      dominates at these sizes), at comparable solution quality.
     - The **`turboswarm` (py)** row — a plain *scalar* Python callable — is not
-      faster than `pyswarms`: there, the per-evaluation GIL round-trip dominates
-      and `pyswarms` vectorizes the objective in NumPy. It lands in `pyswarm`'s
-      ballpark. For top speed use a native benchmark, call from **Rust**, or use
-      the vectorized path below.
-    - With **`vectorized=True`** (the swarm passed as one NumPy array per
-      iteration), turboswarm **matches `pyswarms` for expensive vectorizable
-      objectives** (measured ratio ≈ 1.0). For *cheap* objectives `pyswarms` is
-      still ~1.5–2× faster, because it also vectorizes the swarm bookkeeping in
-      NumPy while turboswarm updates the swarm in Rust per particle.
-    - Absolute numbers and ratios are **machine- and load-dependent**; the
-      within-run ratios are the meaningful part. Reproduce on your hardware.
+      faster than `pyswarms`: the per-evaluation GIL round-trip dominates and
+      `pyswarms` vectorizes the objective in NumPy. For top speed use a native
+      benchmark, call from **Rust**, or use the vectorized path.
+    - With **`vectorized=True`** turboswarm **matches `pyswarms`** on expensive
+      vectorizable objectives; for *cheap* objectives `pyswarms` is still
+      ~1.5–2× faster, because it also vectorizes the swarm bookkeeping in NumPy.
+    - `pymoo`/`DEAP` are not optimized for raw single-objective PSO speed — it is
+      not their focus. Absolute numbers are **machine-dependent**; the
+      within-run ratios are the meaningful part. Measured on an Apple-silicon
+      laptop; reproduce on your hardware.
 
-### Parallel evaluation (expensive objectives)
+## Hyperparameter search
 
-For costly objectives, the Rust API offers `Pso::minimize_parallel`, which
-evaluates the swarm in parallel with `rayon`. On a 10-core machine, an
-artificially expensive objective runs **~6.8× faster** than the sequential path
-(`cargo run --release --example parallel -p turboswarm-core`). It uses synchronous
-(Jacobi) updates and needs an `Fn + Sync` objective, so it is a Rust-side
-feature — the Python-callable path is serialized by the GIL and cannot benefit.
+For hyperparameter tuning specifically, turboswarm integrates where you already
+work instead of competing head-on:
 
+- [`PSOSearchCV`](guide/integrations.md#scikit-learn) is a drop-in alternative to
+  scikit-learn's `GridSearchCV` / `RandomizedSearchCV` that searches the
+  **continuous** space the grid can only sample.
+- [`TurboswarmSampler`](guide/integrations.md#optuna) plugs PSO into an **Optuna**
+  study as a sampler, keeping Optuna's storage, pruning and dashboards.
 
-Numbers are machine-dependent — always reproduce on your own hardware.
+See the [hyperparameter-tuning tutorial](tutorials/hyperparameter-tuning.md) for
+a worked `PSOSearchCV`-vs-`GridSearchCV` comparison.
 
 ## Reproduce it
 
+The benchmark suite covers five functions × three dimensions × all libraries,
+with machine provenance:
+
 ```bash
-pip install -e ".[docs]" pyswarms pyswarm
-python scripts/bench_vs_libs.py            # plain text
-python scripts/bench_vs_libs.py --markdown # Markdown table
+pip install -e . pyswarms pyswarm pymoo deap
+python benches/bench_suite.py              # plain text
+python benches/bench_suite.py --markdown   # Markdown table
 ```
 
-The benchmark script is [`scripts/bench_vs_libs.py`](https://github.com/turboswarm/turboswarm.github.io/blob/main/scripts/bench_vs_libs.py).
+It writes `benches/results/results.csv`, `meta.json` (machine + versions) and a
+speedup figure. Source:
+[`benches/bench_suite.py`](https://github.com/turboswarm/turboswarm.github.io/blob/main/benches/bench_suite.py).

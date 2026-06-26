@@ -8,8 +8,10 @@ the extra you need:
 ```bash
 pip install turboswarm[scipy]    # SciPy drop-in wrapper
 pip install turboswarm[sklearn]  # PSOSearchCV hyperparameter search
+pip install turboswarm[optuna]   # PSO as an Optuna sampler
 pip install turboswarm[parallel] # joblib-parallel objective evaluation
 pip install turboswarm[pandas]   # history / convergence DataFrames
+pip install turboswarm[agents]   # LLM agent tool (LangChain / LangGraph)
 pip install turboswarm[all]      # everything
 ```
 
@@ -21,8 +23,10 @@ each one targets a specific job, so you reach for the one that matches your task
 | pass array bounds / vectorized objectives | NumPy (built in) | — |
 | replace a `scipy.optimize.minimize` call with PSO | SciPy wrapper | `integrations.scipy` |
 | tune model hyperparameters like `GridSearchCV` | `PSOSearchCV` | `integrations.sklearn` |
+| drive an Optuna study with a PSO swarm | `TurboswarmSampler` | `integrations.optuna` |
 | speed up an expensive **Python** objective | Joblib / Dask | `integrations.parallel` |
 | analyze/plot the run as tables | pandas export | `integrations.pandas` |
+| let an LLM agent call PSO as a tool | LangChain tool | `integrations.agents` |
 
 They build on each other: NumPy is the substrate; the SciPy and scikit-learn
 entry points call the same core `minimize`; `parallel` accelerates whichever
@@ -111,6 +115,36 @@ continuous range, a `(low, high)` **int** tuple for an integer range, or a
 **list** of categorical choices. It is a `scikit-learn` estimator (clonable, usable
 in a `Pipeline`), and `n_jobs` is forwarded to the cross-validation.
 
+## Optuna
+
+If your workflow already lives in [Optuna](https://optuna.org), use PSO as a
+drop-in **sampler**: each trial evaluates one particle, and the swarm updates
+after every generation. It supports `Float`/`Int` (including `log=True`) and
+`Categorical` distributions and both study directions.
+
+```python
+import optuna
+from turboswarm.integrations.optuna import TurboswarmSampler
+
+def objective(trial):
+    x = trial.suggest_float("x", -5, 5)
+    lr = trial.suggest_float("lr", 1e-4, 1e0, log=True)
+    kernel = trial.suggest_categorical("kernel", ["rbf", "poly"])
+    ...
+    return score
+
+study = optuna.create_study(
+    direction="minimize",
+    sampler=TurboswarmSampler(n_particles=20, seed=0),
+)
+study.optimize(objective, n_trials=200)
+print(study.best_params, study.best_value)
+```
+
+This keeps Optuna's study management, storage, dashboards and pruning hooks
+while searching with the swarm. It is designed for sequential studies
+(`n_jobs=1`).
+
 ## Joblib / Dask
 
 PSO parallelizes its swarm loop in Rust, but when the *objective itself* is an
@@ -150,8 +184,29 @@ ts_pandas.history_dataframe(r)       # columns: iteration, particle, x0, x1, ...
 `record_history=True`); it is one row per (iteration, particle). From there the
 whole pandas/Matplotlib stack is available for custom analysis.
 
+## Agents (LangChain / LangGraph)
+
+PSO is a useful **tool** for LLM agents: a gradient-free optimizer they can call
+to solve a numeric subproblem. `optimization_tool()` returns a LangChain
+`StructuredTool` (usable directly in a LangChain agent or as a LangGraph
+`ToolNode`) that minimizes a standard benchmark with PSO:
+
+```python
+from turboswarm.integrations.agents import optimization_tool
+
+tool = optimization_tool()
+tool.invoke({"benchmark": "rastrigin", "dim": 2, "seed": 0})
+# {'best_position': [0.0, 0.0], 'best_value': 0.0, 'evaluations': ..., 'stop_reason': 'max_iterations'}
+
+# wire it into an agent (any LLM provider):
+#   tools = [optimization_tool()]
+```
+
+It is deliberately **safe**: the agent picks a *named* benchmark
+(`sphere`, `rastrigin`, …) and a bounded budget — never arbitrary code. The tool
+itself calls no LLM, so it is provider-agnostic.
+
 ## More integrations
 
-Optuna (sampler + comparison), a PyTorch example, and an agent-tool integration
-(LangChain / LangGraph) are on the
+A PyTorch example is on the
 [roadmap](https://github.com/turboswarm/turboswarm.github.io/issues?q=is%3Aissue+label%3Aintegration).

@@ -45,6 +45,7 @@ nav:
       - Constrained optimization: tutorials/constrained-optimization.md
       - Multi-objective: tutorials/multi-objective.md
       - Integer and mixed: tutorials/integer-mixed.md
+      - Gradient-free NN training: tutorials/pytorch-gradient-free.md
   - Guide:
       - Variants: guide/variants.md
       - Topologies: guide/topologies.md

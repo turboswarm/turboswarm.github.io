@@ -18,6 +18,9 @@ runnable top to bottom. If you are new, start with
 - **[Integer and mixed optimization](integer-mixed.md)** — solve a 0/1 knapsack
   (and verify the global optimum) and optimize real/integer/binary variables
   together.
+- **[Gradient-free neural-network training](pytorch-gradient-free.md)** — train a
+  small PyTorch model by optimizing its weights on a non-differentiable metric
+  (accuracy) with PSO.
 
 Each tutorial only needs `turboswarm` plus the extras it calls out (e.g.
 `pip install turboswarm[sklearn]` for the first one).

@@ -43,9 +43,11 @@ docs = ["mkdocs-material", "mkdocstrings[python]", "black"]
 scipy = ["scipy"]
 pandas = ["pandas"]
 sklearn = ["scikit-learn"]
+optuna = ["optuna"]
 parallel = ["joblib"]
 dask = ["dask"]
-all = ["scipy", "pandas", "scikit-learn", "joblib", "dask"]
+agents = ["langchain-core"]
+all = ["scipy", "pandas", "scikit-learn", "optuna", "joblib", "dask", "langchain-core"]
 
 [tool.maturin]
 manifest-path = "crates/pso-py/Cargo.toml"

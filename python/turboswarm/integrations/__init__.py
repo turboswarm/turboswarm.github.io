@@ -29,16 +29,19 @@ so it is imported lazily on first access and requires scikit-learn to be
 installed.
 """
 
-from . import pandas, parallel, scipy  # noqa: F401  (third-party imports are lazy)
+from . import agents, pandas, parallel, scipy  # noqa: F401  (third-party imports are lazy)
 
-__all__ = ["scipy", "sklearn", "pandas", "parallel"]
+__all__ = ["scipy", "sklearn", "optuna", "pandas", "parallel", "agents"]
+
+# Submodules that subclass a third-party library at module level (so importing
+# them requires that library). They are exposed lazily so `import turboswarm`
+# never depends on scikit-learn / Optuna.
+_LAZY = {"sklearn", "optuna"}
 
 
 def __getattr__(name):
-    # Lazily expose the sklearn submodule (it imports scikit-learn at module
-    # level) without making `import turboswarm` depend on scikit-learn.
-    if name == "sklearn":
-        from . import sklearn as _sklearn
+    if name in _LAZY:
+        import importlib
 
-        return _sklearn
+        return importlib.import_module(f"{__name__}.{name}")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -172,3 +172,100 @@ def test_psosearchcv_clonable_and_respects_refit_false():
     search.fit(X, y)
     with pytest.raises(AttributeError):
         search.predict(X)
+
+
+# --- Optuna sampler (issue #14) ---------------------------------------------
+def test_turboswarm_sampler_minimizes():
+    optuna = pytest.importorskip("optuna")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    from turboswarm.integrations.optuna import TurboswarmSampler
+
+    def objective(trial):
+        x = trial.suggest_float("x", -5, 5)
+        y = trial.suggest_float("y", -5, 5)
+        sign = trial.suggest_categorical("sign", ["pos", "neg"])
+        base = (x - 2) ** 2 + (y + 3) ** 2
+        return base if sign == "pos" else base + 1.0
+
+    study = optuna.create_study(direction="minimize",
+                                sampler=TurboswarmSampler(n_particles=20, seed=0))
+    study.optimize(objective, n_trials=200)
+    assert study.best_value < 0.1
+    assert study.best_params["sign"] == "pos"
+    assert abs(study.best_params["x"] - 2) < 0.5
+    assert abs(study.best_params["y"] + 3) < 0.5
+
+
+def test_turboswarm_sampler_log_and_int_and_maximize():
+    optuna = pytest.importorskip("optuna")
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+    from turboswarm.integrations.optuna import TurboswarmSampler
+
+    def objective(trial):  # maximize: peak at n == 7
+        n = trial.suggest_int("n", 1, 20)
+        lr = trial.suggest_float("lr", 1e-4, 1e0, log=True)  # log-scale
+        return -((n - 7) ** 2) - (lr - 0.1) ** 2
+
+    study = optuna.create_study(direction="maximize",
+                                sampler=TurboswarmSampler(n_particles=15, seed=1))
+    study.optimize(objective, n_trials=150)
+    assert abs(study.best_params["n"] - 7) <= 1
+
+
+# --- Agents: LangChain tool (issue #17) -------------------------------------
+def test_optimization_tool_invokes_pso():
+    pytest.importorskip("langchain_core")
+    from turboswarm.integrations.agents import optimization_tool
+
+    tool = optimization_tool()
+    assert tool.name == "minimize_benchmark"
+    assert set(tool.args) >= {"benchmark", "dim", "bound"}
+
+    out = tool.invoke({"benchmark": "rastrigin", "dim": 2, "n_particles": 40,
+                       "max_iter": 150, "seed": 0})
+    assert out["best_value"] < 1e-2
+    assert len(out["best_position"]) == 2
+    assert out["stop_reason"] == "max_iterations"
+
+
+def test_optimization_tool_rejects_unknown_benchmark():
+    pytest.importorskip("langchain_core")
+    from turboswarm.integrations.agents import optimization_tool
+
+    tool = optimization_tool()
+    with pytest.raises(Exception):
+        tool.invoke({"benchmark": "definitely_not_a_benchmark", "dim": 2})
+
+
+# --- PyTorch gradient-free example (issue #12) ------------------------------
+def test_pytorch_gradient_free_training():
+    torch = pytest.importorskip("torch")
+    import torch.nn as nn
+
+    rng = np.random.RandomState(0)
+    X = rng.uniform(-2, 2, size=(200, 2)).astype(np.float32)
+    y = (X[:, 0] * X[:, 1] > 0).astype(np.int64)
+    Xt, yt = torch.from_numpy(X), torch.from_numpy(y)
+
+    torch.manual_seed(0)
+    model = nn.Sequential(nn.Linear(2, 8), nn.Tanh(), nn.Linear(8, 2))
+    shapes = [p.shape for p in model.parameters()]
+    sizes = [p.numel() for p in model.parameters()]
+
+    def set_params(vec):
+        i = 0
+        with torch.no_grad():
+            for p, shape, size in zip(model.parameters(), shapes, sizes):
+                p.copy_(torch.tensor(vec[i:i + size],
+                                     dtype=torch.float32).view(shape))
+                i += size
+
+    def neg_accuracy(vec):
+        set_params(vec)
+        with torch.no_grad():
+            pred = model(Xt).argmax(dim=1)
+            return -(pred == yt).float().mean().item()
+
+    result = pso.minimize(neg_accuracy, bounds=[(-3, 3)] * sum(sizes),
+                          n_particles=50, max_iter=150, seed=0)
+    assert -result.best_value > 0.9      # gradient-free, non-differentiable metric
