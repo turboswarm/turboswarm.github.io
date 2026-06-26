@@ -1,10 +1,12 @@
 site_name: turboswarm
 site_description: Particle Swarm Optimization with a Rust core and a Python API.
+site_author: Jose L. Salmeron
 site_url: https://turboswarm.github.io/
 repo_url: https://github.com/turboswarm/turboswarm.github.io
 repo_name: turboswarm/turboswarm.github.io
 docs_dir: docs
 site_dir: site
+copyright: Created by <a href="https://salmeron.cunef.edu">Jose L. Salmeron</a>
 
 theme:
   name: material
@@ -47,6 +49,7 @@ nav:
       - Multi-objective: guide/multiobjective.md
       - Sensitivity analysis: guide/sensitivity.md
       - Visualization: guide/visualization.md
+      - Integrations: guide/integrations.md
   - Comparison: comparison.md
   - Architecture: architecture.md
   - Extending: extending.md

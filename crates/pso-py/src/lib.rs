@@ -183,6 +183,30 @@ fn resolve_bounds(
         }
         return Ok(list);
     }
+    // 2D array-like: a NumPy array of shape (dim, 2) or a list of [min, max].
+    if let Ok(rows) = bounds.extract::<Vec<Vec<f64>>>(py) {
+        if rows.is_empty() {
+            return Err(PyValueError::new_err("bounds is empty"));
+        }
+        let mut pairs = Vec::with_capacity(rows.len());
+        for row in &rows {
+            if row.len() != 2 {
+                return Err(PyValueError::new_err(
+                    "each bound must have exactly two values, (min, max)",
+                ));
+            }
+            pairs.push((row[0], row[1]));
+        }
+        if let Some(d) = dim {
+            if d != pairs.len() {
+                return Err(PyValueError::new_err(format!(
+                    "dim={d} does not match the {} bound pairs given",
+                    pairs.len()
+                )));
+            }
+        }
+        return Ok(pairs);
+    }
     // Single pair broadcast to `dim` dimensions.
     if let Ok(pair) = bounds.extract::<(f64, f64)>(py) {
         match dim {
@@ -195,8 +219,24 @@ fn resolve_bounds(
             }
         }
     }
+    // Single pair as a 2-element array-like (e.g. a NumPy array of shape (2,)).
+    if let Ok(flat) = bounds.extract::<Vec<f64>>(py) {
+        if flat.len() == 2 {
+            let pair = (flat[0], flat[1]);
+            match dim {
+                Some(d) if d >= 1 => return Ok(vec![pair; d]),
+                Some(_) => return Err(PyValueError::new_err("dim must be >= 1")),
+                None => {
+                    return Err(PyValueError::new_err(
+                        "with a single (min, max) bound, pass dim=<number of dimensions>",
+                    ))
+                }
+            }
+        }
+    }
     Err(PyValueError::new_err(
-        "bounds must be a list of (min, max) pairs, or a single (min, max) pair with dim=<n>",
+        "bounds must be a list of (min, max) pairs (or a NumPy array of shape \
+         (dim, 2)), or a single (min, max) pair with dim=<n>",
     ))
 }
 

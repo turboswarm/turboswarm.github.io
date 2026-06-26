@@ -41,14 +41,14 @@ from .turboswarm_native import (
     grey_benchmark_info,
 )
 from .sensitivity import sweep, SweepResult
-from . import benchmarks, viz
+from . import benchmarks, viz, integrations
 
 # Library best practice: attach a NullHandler so importing turboswarm never emits
 # log output on its own. Applications opt in by configuring logging themselves
 # (e.g. logging.basicConfig(level=logging.INFO)).
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 __all__ = [
     "minimize",
     "minimize_multi",
@@ -63,5 +63,6 @@ __all__ = [
     "grey_benchmark_info",
     "benchmarks",
     "viz",
+    "integrations",
     "__version__",
 ]
