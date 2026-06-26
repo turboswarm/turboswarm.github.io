@@ -72,6 +72,18 @@ markdown_extensions:
   - pymdownx.tabbed:
       alternate_style: true
 
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/turboswarm/turboswarm.github.io
+      name: turboswarm on GitHub
+    - icon: fontawesome/brands/orcid
+      link: https://orcid.org/0000-0001-7811-3716
+      name: Jose L. Salmeron on ORCID
+    - icon: fontawesome/solid/globe
+      link: https://salmeron.cunef.edu
+      name: Jose L. Salmeron
+
 extra_javascript:
   - javascripts/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
