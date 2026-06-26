@@ -48,7 +48,7 @@ from . import benchmarks, viz, integrations
 # (e.g. logging.basicConfig(level=logging.INFO)).
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = [
     "minimize",
     "minimize_multi",
