@@ -2,16 +2,24 @@
 
 **Particle Swarm Optimization** with a compute core in **Rust** and an API in
 **Python**. Focused on visualization, variant comparison and clear code.
-Supports real, integer, binary and mixed variables, constraints and
-multi-objective optimization.
+Supports real, integer, binary, mixed and **grey/interval** variables,
+constraints and multi-objective optimization, with first-class integrations for
+the scientific-Python stack.
 
 ## Installation
+
+```bash
+pip install turboswarm
+```
+
+Optional integration extras: `turboswarm[scipy]`, `[sklearn]`, `[optuna]`,
+`[pandas]`, `[parallel]`, `[agents]`, or `[all]`.
 
 From source (development), with [maturin](https://www.maturin.rs/):
 
 ```bash
-pip install maturin
 python -m venv .venv && source .venv/bin/activate
+pip install maturin
 maturin develop --release      # compiles the Rust core and installs it
 ```
 
@@ -99,9 +107,36 @@ pso.viz.plot_pareto(front); plt.show()   # objective space of a Pareto front
 
 anim = pso.viz.animate_swarm(r, pso.benchmarks.rastrigin, [(-5.12, 5.12)] * 2)
 # in a notebook:  from IPython.display import HTML; HTML(anim.to_jshtml())
+
+# 3D landscape + animated 3D swarm:
+pso.viz.plot_surface(pso.benchmarks.rastrigin, [(-5.12, 5.12)] * 2,
+                     points=r.history[-1]); plt.show()
+anim3d = pso.viz.animate_swarm_3d(r, pso.benchmarks.rastrigin, [(-5.12, 5.12)] * 2)
 ```
 
-`animate_swarm` only supports 2D problems and requires `record_history=True`.
+`animate_swarm` / `animate_swarm_3d` support 2D problems and require
+`record_history=True`.
+
+## Integrations
+
+Optional, lazily-imported helpers under `turboswarm.integrations` (install the
+matching extra):
+
+```python
+# SciPy drop-in (scipy.optimize.minimize signature)
+from turboswarm.integrations import scipy as ts_scipy
+res = ts_scipy.minimize(fun, bounds=[(-5, 5)] * 3)        # -> OptimizeResult
+
+# scikit-learn hyperparameter search (like GridSearchCV)
+from turboswarm.integrations.sklearn import PSOSearchCV
+
+# PSO as an Optuna sampler
+from turboswarm.integrations.optuna import TurboswarmSampler
+
+# Optuna/pandas/Joblib-Dask/LangChain-agent tool also available
+```
+
+See the [Integrations guide](https://turboswarm.github.io/guide/integrations/).
 
 ## Documentation
 

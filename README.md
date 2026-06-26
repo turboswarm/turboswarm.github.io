@@ -38,7 +38,8 @@ print(r.best_value)        # ≈ 0.0
   and FIPS (Fully Informed PSO).
 - **Topologies:** global (gbest), ring (lbest), Von Neumann (2D grid) and random.
 - **Spaces:** continuous (real), integer (with a discretization strategy),
-  binary and **mixed** (per-dimension type).
+  binary, **mixed** (per-dimension type) and **grey / interval** (uncertain
+  values, optimized over their centre and spread).
 - **Multi-objective (MOPSO):** Pareto front via an external archive with a
   turbulence operator, **crowding-distance or Coello's adaptive grid** for
   diversity, and a **hypervolume** quality metric.
@@ -56,7 +57,12 @@ print(r.best_value)        # ≈ 0.0
   the **CEC-family** functions (bent cigar, discus, elliptic, zakharov, levy,
   expanded Schaffer) — each with metadata (recommended bound, known optimum).
 - **Visualization** (Python): convergence curves, variant comparison, 2D swarm
-  animation, Pareto-front and sensitivity plots.
+  animation, **3D landscape + animated 3D swarm**, Pareto-front and sensitivity
+  plots.
+- **Integrations** (`turboswarm.integrations`): a **SciPy** drop-in
+  (`scipy.optimize.minimize`), **scikit-learn** `PSOSearchCV`, an **Optuna**
+  sampler, **pandas** export, **Joblib/Dask** parallel objectives, and an
+  **LLM agent tool** (LangChain / LangGraph).
 - **Reproducibility:** every experiment accepts a `seed`.
 
 ## Status by phase

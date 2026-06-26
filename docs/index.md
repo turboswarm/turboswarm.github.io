@@ -9,7 +9,8 @@ visualization first, easy algorithm comparison, and readable code.
 - **Velocity variants:** inertia (Shi-Eberhart), constriction (Clerc-Kennedy)
   and FIPS (Fully Informed PSO).
 - **Topologies:** global (gbest), ring (lbest), Von Neumann (2D grid) and random.
-- **Spaces:** continuous, integer, binary and mixed (per-dimension type).
+- **Spaces:** continuous, integer, binary, mixed (per-dimension type) and
+  **grey / interval** ([uncertain values](guide/grey.md)).
 - **Multi-objective (MOPSO):** Pareto front via archive + crowding distance.
 - **Constraints** (penalty), **run control** (target / budgets / stagnation /
   callback) and **boundary handling** (clamp, reflect, wrap, reinit).
@@ -18,7 +19,11 @@ visualization first, easy algorithm comparison, and readable code.
 - **Benchmarks:** sphere, rastrigin, rosenbrock, ackley, griewank and schwefel,
   each with metadata (recommended bound and known optimum).
 - **Visualization** (Python): convergence curves, variant comparison, a 2D
-  animated swarm and Pareto-front plots.
+  animated swarm, **3D landscape + animated 3D swarm**, and Pareto-front plots.
+- **Integrations:** [SciPy](guide/integrations.md#scipy) drop-in,
+  [scikit-learn `PSOSearchCV`](guide/integrations.md#scikit-learn),
+  [Optuna sampler](guide/integrations.md#optuna), pandas, Joblib/Dask, and an
+  [LLM agent tool](guide/integrations.md#agents-langchain-langgraph).
 - **Reproducibility:** every experiment accepts a `seed`.
 
 ## The core idea

@@ -18,15 +18,15 @@ is an honest picture — each leads somewhere.
 | Constraints | ✅ penalty + repair | manual | ✅ inequality | ✅ rich | manual |
 | Multi-objective | ✅ MOPSO | ❌ | ❌ | ✅ **many MOEAs** | ✅ NSGA-II etc. |
 | Parallel evaluation | ✅ `rayon` (Rust) | ❌ | ❌ | ✅ | ✅ |
-| Built-in visualization | convergence, compare, **animate 2D** | cost/contour/surface | ❌ | ✅ (scatter, PCP) | ❌ |
+| Built-in visualization | convergence, compare, **animate 2D + 3D surface** | cost/contour/surface | ❌ | ✅ (scatter, PCP) | ❌ |
 | Reproducible seed | ✅ deterministic | global NumPy seed | ✅ | ✅ | ✅ |
 | Extensibility | ✅ one trait | backend (involved) | ❌ | ✅ operators | ✅ toolbox |
 | Ecosystem integrations | SciPy, scikit-learn, Optuna, agents | — | — | — | — |
 | API languages | **Rust + Python** | Python | Python | Python | Python |
 
 **Where turboswarm leads:** a compiled Rust core (speed, below), FIPS +
-constriction and a **grey/interval** search space out of the box, animated-swarm
-visualization, deterministic seeding, a single API spanning real/integer/mixed
+constriction and a **grey/interval** search space out of the box, **2D and 3D
+animated-swarm** visualization, deterministic seeding, a single API spanning real/integer/mixed
 variables with a one-trait extensibility model, and first-class
 [ecosystem integrations](guide/integrations.md) (a SciPy drop-in, `PSOSearchCV`,
 an Optuna sampler, an agent tool).
