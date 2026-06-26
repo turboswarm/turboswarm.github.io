@@ -63,11 +63,12 @@ def compare(results, log=True):
     return ax
 
 
-def animate_swarm(result, function, bounds, interval=150):
+def animate_swarm(result, function, bounds, interval=150, cmap="Blues"):
     """Animate the 2D swarm over the contour map of `function`.
 
     `function`: callable that receives [x, y] and returns a float.
     `bounds`: [(xmin, xmax), (ymin, ymax)].
+    `cmap`: landscape colormap (a cool map so the particles stand out).
     Returns a FuncAnimation object (in a notebook: HTML(anim.to_jshtml())).
     """
     import numpy as np
@@ -88,8 +89,9 @@ def animate_swarm(result, function, bounds, interval=150):
     gz = np.vectorize(lambda a, b: function([a, b]))(gxx, gyy)
 
     fig, ax = plt.subplots()
-    ax.contourf(gxx, gyy, gz, levels=30, cmap="viridis")
-    scat = ax.scatter([], [], c="red", s=20, edgecolors="white")
+    ax.contourf(gxx, gyy, gz, levels=30, cmap=cmap)
+    scat = ax.scatter([], [], c="orangered", s=32, edgecolors="white",
+                      linewidths=0.6, zorder=3)
     ax.set_xlim(xmin, xmax)
     ax.set_ylim(ymin, ymax)
 
@@ -120,7 +122,7 @@ def _surface_grid(function, bounds, resolution):
     return gxx, gyy, gz
 
 
-def plot_surface(function, bounds, ax=None, points=None, cmap="viridis",
+def plot_surface(function, bounds, ax=None, points=None, cmap="Blues",
                  resolution=120, elev=38, azim=-60):
     """Render the objective landscape of a 2D `function` as a 3D surface.
 
@@ -139,7 +141,7 @@ def plot_surface(function, bounds, ax=None, points=None, cmap="viridis",
     if ax is None:
         fig = plt.figure(figsize=(8, 6))
         ax = fig.add_subplot(projection="3d")
-    ax.plot_surface(gxx, gyy, gz, cmap=cmap, alpha=0.75, linewidth=0,
+    ax.plot_surface(gxx, gyy, gz, cmap=cmap, alpha=0.65, linewidth=0,
                     antialiased=True, rstride=2, cstride=2)
     zmin = float(np.min(gz))
     # A filled contour projected on the floor adds depth.
@@ -149,8 +151,8 @@ def plot_surface(function, bounds, ax=None, points=None, cmap="viridis",
     if points is not None:
         pts = np.asarray(points, dtype=float)
         zs = np.array([function([px, py]) for px, py in pts])
-        ax.scatter(pts[:, 0], pts[:, 1], zs, c="crimson", s=28,
-                   edgecolors="white", depthshade=True)
+        ax.scatter(pts[:, 0], pts[:, 1], zs, c="orangered", s=45,
+                   edgecolors="white", linewidths=0.6, depthshade=False)
     ax.view_init(elev=elev, azim=azim)
     ax.set_xlabel("x0")
     ax.set_ylabel("x1")
@@ -159,7 +161,7 @@ def plot_surface(function, bounds, ax=None, points=None, cmap="viridis",
     return ax
 
 
-def animate_swarm_3d(result, function, bounds, interval=150, cmap="viridis",
+def animate_swarm_3d(result, function, bounds, interval=150, cmap="Blues",
                      resolution=120, rotate=True):
     """Animate the swarm in 3D over the objective surface of `function`.
 
@@ -206,9 +208,9 @@ def animate_swarm_3d(result, function, bounds, interval=150, cmap="viridis",
     ax.set_xlabel("x0")
     ax.set_ylabel("x1")
     ax.set_zlabel("f(x)")
-    scat = ax.scatter([], [], [], c="crimson", s=26, edgecolors="white",
-                      depthshade=True)
-    star = ax.scatter([], [], [], c="gold", s=160, marker="*",
+    scat = ax.scatter([], [], [], c="orangered", s=42, edgecolors="white",
+                      linewidths=0.6, depthshade=False)
+    star = ax.scatter([], [], [], c="gold", s=220, marker="*",
                       edgecolors="black", depthshade=False)
 
     def update(frame):
