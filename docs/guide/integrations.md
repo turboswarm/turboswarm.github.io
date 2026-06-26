@@ -7,11 +7,26 @@ the extra you need:
 
 ```bash
 pip install turboswarm[scipy]    # SciPy drop-in wrapper
+pip install turboswarm[sklearn]  # PSOSearchCV hyperparameter search
+pip install turboswarm[parallel] # joblib-parallel objective evaluation
 pip install turboswarm[pandas]   # history / convergence DataFrames
 pip install turboswarm[all]      # everything
 ```
 
-The integrations live under `turboswarm.integrations`.
+The integrations live under `turboswarm.integrations` and compose as a stack —
+each one targets a specific job, so you reach for the one that matches your task:
+
+| You want to… | Use | Module |
+|---|---|---|
+| pass array bounds / vectorized objectives | NumPy (built in) | — |
+| replace a `scipy.optimize.minimize` call with PSO | SciPy wrapper | `integrations.scipy` |
+| tune model hyperparameters like `GridSearchCV` | `PSOSearchCV` | `integrations.sklearn` |
+| speed up an expensive **Python** objective | Joblib / Dask | `integrations.parallel` |
+| analyze/plot the run as tables | pandas export | `integrations.pandas` |
+
+They build on each other: NumPy is the substrate; the SciPy and scikit-learn
+entry points call the same core `minimize`; `parallel` accelerates whichever
+objective you pass; and `pandas` turns any result into a DataFrame.
 
 ## NumPy
 
@@ -65,6 +80,59 @@ extra keyword (`n_particles`, `velocity`, `topology`, `seed`, `constraints`, …
 is forwarded to [`turboswarm.minimize`](../api/python.md). It also accepts a
 `scipy.optimize.Bounds` object.
 
+## scikit-learn
+
+`PSOSearchCV` is a PSO-driven alternative to `GridSearchCV` /
+`RandomizedSearchCV`: it explores the hyperparameter space with the swarm and
+exposes the familiar search API (`fit`, `best_params_`, `best_score_`,
+`best_estimator_`, `cv_results_`, `predict`).
+
+```python
+from sklearn.svm import SVC
+from turboswarm.integrations.sklearn import PSOSearchCV
+
+search = PSOSearchCV(
+    SVC(),
+    {
+        "C": (1e-2, 1e2),          # (low, high) float  -> continuous range
+        "gamma": (1e-4, 1e0),      # continuous range
+        "kernel": ["rbf", "poly"], # list               -> categorical choice
+        # an (int, int) tuple, e.g. "degree": (2, 5), would be an integer range
+    },
+    n_particles=20, max_iter=30, cv=5, scoring="accuracy", random_state=0,
+)
+search.fit(X, y)
+print(search.best_params_, search.best_score_)
+y_pred = search.predict(X_new)      # delegates to the refit best_estimator_
+```
+
+The search space per hyperparameter is: a `(low, high)` **float** tuple for a
+continuous range, a `(low, high)` **int** tuple for an integer range, or a
+**list** of categorical choices. It is a `scikit-learn` estimator (clonable, usable
+in a `Pipeline`), and `n_jobs` is forwarded to the cross-validation.
+
+## Joblib / Dask
+
+PSO parallelizes its swarm loop in Rust, but when the *objective itself* is an
+expensive Python call (a heavy model, a simulation) you can distribute the
+per-particle evaluations. These helpers wrap a per-particle objective into a
+**vectorized** one — use it with `vectorized=True`:
+
+```python
+from turboswarm.integrations import parallel
+
+def expensive(x):          # one particle; slow (e.g. trains a model)
+    ...
+    return cost
+
+obj = parallel.joblib_objective(expensive, n_jobs=-1)      # all cores
+r = pso.minimize(obj, bounds=[(-5, 5)] * 10, vectorized=True, seed=0)
+```
+
+`joblib_objective` accepts joblib's `backend` (`"loky"`, `"threading"`,
+`"multiprocessing"`). For a cluster, `parallel.dask_objective(expensive,
+client=client)` submits the calls to a Dask `Client`.
+
 ## pandas
 
 Export an optimization result as tidy `DataFrame`s for analysis and reporting:
@@ -84,6 +152,6 @@ whole pandas/Matplotlib stack is available for custom analysis.
 
 ## More integrations
 
-scikit-learn (`PSOSearchCV`), Optuna (sampler + comparison), Joblib/Dask
-(distributed Python objectives) and a PyTorch example are on the
+Optuna (sampler + comparison), a PyTorch example, and an agent-tool integration
+(LangChain / LangGraph) are on the
 [roadmap](https://github.com/turboswarm/turboswarm.github.io/issues?q=is%3Aissue+label%3Aintegration).

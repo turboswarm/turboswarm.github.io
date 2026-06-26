@@ -111,3 +111,64 @@ def test_pandas_history_dataframe_requires_history():
                      max_iter=5, record_history=False)
     with pytest.raises(ValueError):
         ts_pandas.history_dataframe(r)
+
+
+# --- Joblib parallel objective (issue #16) ----------------------------------
+def test_joblib_objective_converges():
+    pytest.importorskip("joblib")
+    from turboswarm.integrations import parallel
+
+    def sphere(x):
+        return float(np.sum(np.asarray(x) ** 2))
+
+    obj = parallel.joblib_objective(sphere, n_jobs=2, backend="threading")
+    r = pso.minimize(obj, bounds=[(-5, 5)] * 4, vectorized=True, seed=1)
+    assert r.best_value < 1e-3
+
+
+# --- scikit-learn PSOSearchCV (issue #13) -----------------------------------
+def test_psosearchcv_tunes_and_predicts():
+    pytest.importorskip("sklearn")
+    from sklearn.datasets import load_iris
+    from sklearn.tree import DecisionTreeClassifier
+
+    from turboswarm.integrations.sklearn import PSOSearchCV
+
+    X, y = load_iris(return_X_y=True)
+    search = PSOSearchCV(
+        DecisionTreeClassifier(random_state=0),
+        {"max_depth": (1, 8), "min_samples_leaf": (1, 10),
+         "criterion": ["gini", "entropy"]},
+        n_particles=8, max_iter=6, cv=3, random_state=0,
+    )
+    search.fit(X, y)
+
+    assert search.best_score_ > 0.8
+    assert set(search.best_params_) == {"max_depth", "min_samples_leaf", "criterion"}
+    # integer/categorical decoding lands inside the declared space
+    assert 1 <= search.best_params_["max_depth"] <= 8
+    assert search.best_params_["criterion"] in {"gini", "entropy"}
+    assert search.cv_results_["rank_test_score"].min() == 1
+    assert search.predict(X[:5]).shape == (5,)
+    assert 0.0 <= search.score(X, y) <= 1.0
+
+
+def test_psosearchcv_clonable_and_respects_refit_false():
+    pytest.importorskip("sklearn")
+    from sklearn.base import clone
+    from sklearn.datasets import load_iris
+    from sklearn.linear_model import LogisticRegression
+
+    from turboswarm.integrations.sklearn import PSOSearchCV
+
+    X, y = load_iris(return_X_y=True)
+    search = PSOSearchCV(
+        LogisticRegression(max_iter=200),
+        {"C": (1e-2, 1e2)},
+        n_particles=6, max_iter=4, cv=3, random_state=0, refit=False,
+    )
+    # sklearn-cloneable (get_params/set_params round-trip via BaseEstimator)
+    assert isinstance(clone(search), PSOSearchCV)
+    search.fit(X, y)
+    with pytest.raises(AttributeError):
+        search.predict(X)

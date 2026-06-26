@@ -42,7 +42,10 @@ docs = ["mkdocs-material", "mkdocstrings[python]", "black"]
 # Integrations (see turboswarm.integrations). Each is optional and lazily imported.
 scipy = ["scipy"]
 pandas = ["pandas"]
-all = ["scipy", "pandas"]
+sklearn = ["scikit-learn"]
+parallel = ["joblib"]
+dask = ["dask"]
+all = ["scipy", "pandas", "scikit-learn", "joblib", "dask"]
 
 [tool.maturin]
 manifest-path = "crates/pso-py/Cargo.toml"
