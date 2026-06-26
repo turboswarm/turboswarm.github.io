@@ -38,6 +38,11 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Getting started: getting-started.md
+  - Tutorials:
+      - Overview: tutorials/index.md
+      - Tuning hyperparameters: tutorials/hyperparameter-tuning.md
+      - Visualizing a swarm: tutorials/visualizing-convergence.md
+      - Constrained optimization: tutorials/constrained-optimization.md
   - Guide:
       - Variants: guide/variants.md
       - Topologies: guide/topologies.md
