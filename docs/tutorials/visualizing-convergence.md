@@ -84,6 +84,22 @@ origin as the iterations progress.
     (the default). For higher dimensions, plot convergence instead, or project
     to two dimensions before animating.
 
+## A 3D view of the landscape
+
+For a more striking picture, render the objective as a 3D surface and drop the
+final swarm onto it with `plot_surface`:
+
+```python
+pso.viz.plot_surface(pso.benchmarks.rastrigin, bounds, points=result.history[-1])
+plt.show()
+```
+
+![3D surface of the Rastrigin landscape with the swarm](../assets/surface3d.png)
+
+`pso.viz.animate_swarm_3d(result, pso.benchmarks.rastrigin, bounds)` animates the
+swarm flying over this surface, with the best-so-far marked by a gold star and a
+slowly rotating camera — see the [Visualization guide](../guide/visualization.md#3d-landscape-and-swarm).
+
 ## Next steps
 
 - For multi-objective runs, [`viz.plot_pareto`](../guide/multiobjective.md)

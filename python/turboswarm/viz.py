@@ -3,6 +3,8 @@
 Requires matplotlib. Functions:
   - plot_convergence(result, label=None, ax=None)
   - animate_swarm(result, function, bounds)   # 2D swarm over a contour
+  - plot_surface(function, bounds, points=None)   # 3D objective landscape
+  - animate_swarm_3d(result, function, bounds)    # 3D swarm over the surface
   - compare(results)                          # overlay convergence curves
   - plot_pareto(front, ax=None)               # objective space of a ParetoFront
   - plot_sensitivity(sweep, x, y=None)        # hyperparameter sweep (line/heatmap)
@@ -105,6 +107,124 @@ def animate_swarm(result, function, bounds, interval=150):
         fig, update, frames=len(result.history),
         init_func=init, interval=interval, blit=False
     )
+
+
+def _surface_grid(function, bounds, resolution):
+    import numpy as np
+
+    (xmin, xmax), (ymin, ymax) = bounds
+    gx = np.linspace(xmin, xmax, resolution)
+    gy = np.linspace(ymin, ymax, resolution)
+    gxx, gyy = np.meshgrid(gx, gy)
+    gz = np.vectorize(lambda a, b: function([a, b]))(gxx, gyy)
+    return gxx, gyy, gz
+
+
+def plot_surface(function, bounds, ax=None, points=None, cmap="viridis",
+                 resolution=120, elev=38, azim=-60):
+    """Render the objective landscape of a 2D `function` as a 3D surface.
+
+    `function`: callable receiving [x, y] and returning a float.
+    `bounds`: [(xmin, xmax), (ymin, ymax)].
+    `points`: optional iterable of [x, y] positions to scatter on the surface
+        (e.g. ``result.history[-1]`` for the final swarm).
+    Returns the 3D Axes.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    if len(bounds) != 2:
+        raise ValueError("plot_surface only supports 2D problems")
+    gxx, gyy, gz = _surface_grid(function, bounds, resolution)
+    if ax is None:
+        fig = plt.figure(figsize=(8, 6))
+        ax = fig.add_subplot(projection="3d")
+    ax.plot_surface(gxx, gyy, gz, cmap=cmap, alpha=0.75, linewidth=0,
+                    antialiased=True, rstride=2, cstride=2)
+    zmin = float(np.min(gz))
+    # A filled contour projected on the floor adds depth.
+    ax.contourf(gxx, gyy, gz, zdir="z", offset=zmin, levels=25, cmap=cmap,
+                alpha=0.5)
+    ax.set_zlim(zmin, float(np.max(gz)))
+    if points is not None:
+        pts = np.asarray(points, dtype=float)
+        zs = np.array([function([px, py]) for px, py in pts])
+        ax.scatter(pts[:, 0], pts[:, 1], zs, c="crimson", s=28,
+                   edgecolors="white", depthshade=True)
+    ax.view_init(elev=elev, azim=azim)
+    ax.set_xlabel("x0")
+    ax.set_ylabel("x1")
+    ax.set_zlabel("f(x)")
+    ax.set_title("Objective landscape")
+    return ax
+
+
+def animate_swarm_3d(result, function, bounds, interval=150, cmap="viridis",
+                     resolution=120, rotate=True):
+    """Animate the swarm in 3D over the objective surface of `function`.
+
+    Like :func:`animate_swarm`, but draws a 3D surface of the landscape with the
+    particles flying over it, the best-so-far marked with a gold star, and a
+    slow camera rotation. 2D problems only; needs ``record_history=True``.
+
+    `function`: callable receiving [x, y] -> float. `bounds`: [(xmin, xmax),
+    (ymin, ymax)]. Returns a FuncAnimation (in a notebook:
+    ``HTML(anim.to_jshtml())``; to a file: ``anim.save("swarm3d.gif")``).
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+
+    if len(bounds) != 2:
+        raise ValueError("animate_swarm_3d only supports 2D problems")
+    if not result.history:
+        raise ValueError("run minimize(..., record_history=True)")
+
+    n_frames = len(result.history)
+    logger.info("building 3D swarm animation: %d frames, %d particles",
+                n_frames, len(result.history[0]))
+    gxx, gyy, gz = _surface_grid(function, bounds, resolution)
+    zmin, zmax = float(np.min(gz)), float(np.max(gz))
+
+    # Precompute the best-so-far position/value at each frame.
+    best_xy, best_z, bx, bv = [], [], None, np.inf
+    for frame in result.history:
+        for px, py in frame:
+            v = function([px, py])
+            if v < bv:
+                bv, bx = v, (px, py)
+        best_xy.append(bx)
+        best_z.append(bv)
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(projection="3d")
+    ax.plot_surface(gxx, gyy, gz, cmap=cmap, alpha=0.6, linewidth=0,
+                    antialiased=True, rstride=2, cstride=2)
+    ax.contourf(gxx, gyy, gz, zdir="z", offset=zmin, levels=25, cmap=cmap,
+                alpha=0.4)
+    ax.set_zlim(zmin, zmax)
+    ax.set_xlabel("x0")
+    ax.set_ylabel("x1")
+    ax.set_zlabel("f(x)")
+    scat = ax.scatter([], [], [], c="crimson", s=26, edgecolors="white",
+                      depthshade=True)
+    star = ax.scatter([], [], [], c="gold", s=160, marker="*",
+                      edgecolors="black", depthshade=False)
+
+    def update(frame):
+        pts = np.asarray(result.history[frame], dtype=float)
+        zs = np.array([function([px, py]) for px, py in pts])
+        scat._offsets3d = (pts[:, 0], pts[:, 1], zs)
+        bxp, byp = best_xy[frame]
+        star._offsets3d = ([bxp], [byp], [best_z[frame]])
+        if rotate:
+            ax.view_init(elev=35, azim=(-60 + frame * 1.5) % 360)
+        ax.set_title(f"Iteration {frame + 1}/{n_frames}  ·  "
+                     f"best = {best_z[frame]:.3g}")
+        return scat, star
+
+    return FuncAnimation(fig, update, frames=n_frames, interval=interval,
+                         blit=False)
 
 
 def _ordered_unique(values):

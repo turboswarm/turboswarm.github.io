@@ -52,6 +52,36 @@ plt.show()
 
 The GIF above is produced by [`scripts/make_swarm_gif.py`](https://github.com/turboswarm/turboswarm.github.io/blob/main/scripts/make_swarm_gif.py).
 
+## 3D landscape and swarm
+
+For a more striking view, render the objective as a **3D surface**. Pass the
+final swarm to `plot_surface` to drop the particles onto the landscape:
+
+```python
+r = pso.minimize("rastrigin", bounds=[(-5.12, 5.12)] * 2, seed=3)
+pso.viz.plot_surface(pso.benchmarks.rastrigin, [(-5.12, 5.12)] * 2,
+                     points=r.history[-1])
+plt.show()
+```
+
+![3D surface of the Rastrigin landscape with the final swarm](../assets/surface3d.png)
+
+`animate_swarm_3d` turns it into an animation: the particles fly over the
+surface, the **best-so-far** is marked with a gold star, and the camera slowly
+rotates.
+
+```python
+anim = pso.viz.animate_swarm_3d(r, pso.benchmarks.rastrigin, [(-5.12, 5.12)] * 2)
+plt.show()
+# Save a GIF:  anim.save("swarm3d.gif", writer="pillow", fps=10)
+```
+
+![3D animation of a swarm minimizing the Rastrigin function](../assets/swarm3d.gif)
+
+Both 3D helpers support **2D problems** (the surface is `f(x0, x1)`); the
+animation needs `record_history=True`. Tune the look with `cmap`, `resolution`,
+`elev`/`azim` (static) or `rotate=False` (animation).
+
 ## Sensitivity plots
 
 See [Sensitivity analysis](sensitivity.md) for `viz.plot_sensitivity` (a line
