@@ -43,6 +43,8 @@ nav:
       - Tuning hyperparameters: tutorials/hyperparameter-tuning.md
       - Visualizing a swarm: tutorials/visualizing-convergence.md
       - Constrained optimization: tutorials/constrained-optimization.md
+      - Multi-objective: tutorials/multi-objective.md
+      - Integer and mixed: tutorials/integer-mixed.md
   - Guide:
       - Variants: guide/variants.md
       - Topologies: guide/topologies.md
