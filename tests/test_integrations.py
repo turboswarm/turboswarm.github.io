@@ -113,6 +113,22 @@ def test_pandas_history_dataframe_requires_history():
         ts_pandas.history_dataframe(r)
 
 
+def test_pandas_export_csv_parquet(tmp_path):
+    pd = pytest.importorskip("pandas")
+    from turboswarm.integrations import pandas as ts_pandas
+
+    r = pso.minimize("sphere", bounds=[(-5, 5)] * 2, seed=1, max_iter=8,
+                     n_particles=5)
+    csv_path = ts_pandas.to_csv(r, tmp_path / "hist.csv")
+    assert len(pd.read_csv(csv_path)) == 8 * 5
+    conv_path = ts_pandas.to_csv(r, tmp_path / "conv.csv", kind="convergence")
+    assert list(pd.read_csv(conv_path).columns) == ["iteration", "best_value"]
+
+    pytest.importorskip("pyarrow")
+    pq_path = ts_pandas.to_parquet(r, tmp_path / "hist.parquet")
+    assert len(pd.read_parquet(pq_path)) == 8 * 5
+
+
 # --- Joblib parallel objective (issue #16) ----------------------------------
 def test_joblib_objective_converges():
     pytest.importorskip("joblib")

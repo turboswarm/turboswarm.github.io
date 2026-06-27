@@ -178,6 +178,11 @@ r = pso.minimize("sphere", bounds=[(-5, 5)] * 2, seed=1)
 
 ts_pandas.convergence_dataframe(r)   # columns: iteration, best_value
 ts_pandas.history_dataframe(r)       # columns: iteration, particle, x0, x1, ...
+
+# write straight to disk (Parquet needs the [parquet] extra):
+ts_pandas.to_csv(r, "history.csv")
+ts_pandas.to_csv(r, "convergence.csv", kind="convergence")
+ts_pandas.to_parquet(r, "history.parquet")
 ```
 
 `history_dataframe` needs the run to have recorded history (the default,

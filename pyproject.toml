@@ -42,12 +42,14 @@ docs = ["mkdocs-material", "mkdocstrings[python]", "black"]
 # Integrations (see turboswarm.integrations). Each is optional and lazily imported.
 scipy = ["scipy"]
 pandas = ["pandas"]
+parquet = ["pandas", "pyarrow"]
+plotly = ["plotly"]
 sklearn = ["scikit-learn"]
 optuna = ["optuna"]
 parallel = ["joblib"]
 dask = ["dask"]
 agents = ["langchain-core"]
-all = ["scipy", "pandas", "scikit-learn", "optuna", "joblib", "dask", "langchain-core"]
+all = ["scipy", "pandas", "pyarrow", "plotly", "scikit-learn", "optuna", "joblib", "dask", "langchain-core"]
 
 [tool.maturin]
 manifest-path = "crates/pso-py/Cargo.toml"

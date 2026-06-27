@@ -72,6 +72,25 @@ driven idiomatically: `pyswarms`/`pymoo` with a vectorized NumPy objective,
       within-run ratios are the meaningful part. Measured on an Apple-silicon
       laptop; reproduce on your hardware.
 
+## Statistical comparison
+
+Treating each (function, dimension) pair as a problem instance (15 in total) and
+the libraries as the methods (the standard Demšar setup), `benches/stats.py`
+reports per-library **mean ranks**, the **Friedman** test and pairwise
+**Wilcoxon** tests — for both solution quality and time.
+
+- **Solution quality** (best value): the Friedman test finds **no significant
+  difference** (p ≈ 0.13). All libraries reach comparable quality; mean ranks
+  are close (DEAP and `turboswarm` lead slightly). This is the honest result —
+  on these standard functions nobody clearly wins on quality.
+- **Wall-clock time:** the difference is **highly significant** (Friedman
+  p ≈ 6e-14). `turboswarm (native)` has mean rank **1.00** — fastest on *every*
+  one of the 15 instances — and a pairwise Wilcoxon vs each other library gives
+  p ≈ 6e-5 (the smallest attainable with 15 instances).
+
+In short: **comparable quality, decisively faster.** Reproduce with
+`python benches/stats.py` (after `bench_suite.py`).
+
 ## Hyperparameter search
 
 For hyperparameter tuning specifically, turboswarm integrates where you already
@@ -95,6 +114,7 @@ with machine provenance:
 pip install -e . pyswarms pyswarm pymoo deap
 python benches/bench_suite.py              # plain text
 python benches/bench_suite.py --markdown   # Markdown table
+python benches/stats.py                     # Friedman / Wilcoxon / ranking
 ```
 
 It writes `benches/results/results.csv`, `meta.json` (machine + versions) and a

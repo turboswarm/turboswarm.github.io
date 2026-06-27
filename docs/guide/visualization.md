@@ -82,6 +82,49 @@ Both 3D helpers support **2D problems** (the surface is `f(x0, x1)`); the
 animation needs `record_history=True`. Tune the look with `cmap`, `resolution`,
 `elev`/`azim` (static) or `rotate=False` (animation).
 
+## High-dimensional swarms (3D projection)
+
+`plot_surface` / `animate_swarm_3d` draw a true landscape, so they are for 2D
+problems. For **more than two dimensions**, `animate_swarm_projected` projects
+each particle to 3D — with PCA (default, fit over the whole run so the view is
+stable) or by picking three dimensions — and colors particles by their objective
+value when you pass the function:
+
+```python
+r = pso.minimize("rastrigin", bounds=[(-5.12, 5.12)] * 8, seed=2)   # 8-D
+
+# PCA projection, colored by objective:
+pso.viz.animate_swarm_projected(r, function=pso.benchmarks.rastrigin)
+
+# or pick three dimensions explicitly:
+pso.viz.animate_swarm_projected(r, dims=(0, 3, 5))
+```
+
+## Interactive plots (Plotly)
+
+For zoom/hover/pan in notebooks and on the web, the `plotly_*` helpers return a
+Plotly figure (install `pip install turboswarm[plotly]`):
+
+```python
+pso.viz.plotly_convergence(r).show()
+pso.viz.plotly_compare({"inertia": rA, "fips": rB}).show()
+pso.viz.plotly_pareto(front).show()
+```
+
+## Exporting the run (CSV / Parquet)
+
+Export the per-iteration history or the convergence curve for analysis elsewhere
+(needs `pip install turboswarm[pandas]`, or `[parquet]` for Parquet):
+
+```python
+from turboswarm.integrations import pandas as ts_pandas
+
+ts_pandas.to_csv(r, "history.csv")                       # one row per (iter, particle)
+ts_pandas.to_csv(r, "convergence.csv", kind="convergence")
+ts_pandas.to_parquet(r, "history.parquet")
+# or get DataFrames directly: ts_pandas.history_dataframe(r) / convergence_dataframe(r)
+```
+
 ## Sensitivity plots
 
 See [Sensitivity analysis](sensitivity.md) for `viz.plot_sensitivity` (a line

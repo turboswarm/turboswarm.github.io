@@ -5,6 +5,8 @@ Requires matplotlib. Functions:
   - animate_swarm(result, function, bounds)   # 2D swarm over a contour
   - plot_surface(function, bounds, points=None)   # 3D objective landscape
   - animate_swarm_3d(result, function, bounds)    # 3D swarm over the surface
+  - animate_swarm_projected(result, function=None)  # 3D projection for >2D
+  - plotly_convergence / plotly_compare / plotly_pareto   # interactive (Plotly)
   - compare(results)                          # overlay convergence curves
   - plot_pareto(front, ax=None)               # objective space of a ParetoFront
   - plot_sensitivity(sweep, x, y=None)        # hyperparameter sweep (line/heatmap)
@@ -224,6 +226,143 @@ def animate_swarm_3d(result, function, bounds, interval=150, cmap="Blues",
         ax.set_title(f"Iteration {frame + 1}/{n_frames}  ·  "
                      f"best = {best_z[frame]:.3g}")
         return scat, star
+
+    return FuncAnimation(fig, update, frames=n_frames, interval=interval,
+                         blit=False)
+
+
+def _require_plotly():
+    try:
+        import plotly.graph_objects as go
+    except ImportError as exc:  # pragma: no cover - exercised without plotly
+        raise ImportError(
+            "plotly is required for the interactive viz functions; "
+            "install it with: pip install turboswarm[plotly]"
+        ) from exc
+    return go
+
+
+def plotly_convergence(result, label="turboswarm", log=True):
+    """Interactive convergence curve (Plotly). Returns a ``go.Figure``."""
+    go = _require_plotly()
+    conv = list(result.convergence)
+    fig = go.Figure(go.Scatter(y=conv, x=list(range(len(conv))), mode="lines",
+                               name=label))
+    fig.update_layout(title="PSO convergence", xaxis_title="Iteration",
+                      yaxis_title="Best value", template="plotly_white")
+    if log:
+        fig.update_yaxes(type="log")
+    return fig
+
+
+def plotly_compare(results, log=True):
+    """Interactive overlay of several convergence curves (Plotly).
+
+    ``results``: dict ``{name: PsoResult}``. Returns a ``go.Figure``.
+    """
+    go = _require_plotly()
+    fig = go.Figure()
+    for name, res in results.items():
+        conv = list(res.convergence)
+        fig.add_trace(go.Scatter(y=conv, x=list(range(len(conv))),
+                                 mode="lines", name=name))
+    fig.update_layout(title="PSO convergence", xaxis_title="Iteration",
+                      yaxis_title="Best value", template="plotly_white")
+    if log:
+        fig.update_yaxes(type="log")
+    return fig
+
+
+def plotly_pareto(front, labels=("objective 1", "objective 2")):
+    """Interactive scatter of a 2-objective Pareto front (Plotly)."""
+    go = _require_plotly()
+    objs = front.objectives
+    if not objs or len(objs[0]) != 2:
+        raise ValueError("plotly_pareto supports exactly 2 objectives")
+    f1 = [o[0] for o in objs]
+    f2 = [o[1] for o in objs]
+    fig = go.Figure(go.Scatter(x=f1, y=f2, mode="markers",
+                               marker=dict(size=8, color="orangered",
+                                           line=dict(width=1, color="white"))))
+    fig.update_layout(title="Pareto front", xaxis_title=labels[0],
+                      yaxis_title=labels[1], template="plotly_white")
+    return fig
+
+
+def animate_swarm_projected(result, function=None, dims=None, method="pca",
+                            interval=150, cmap="viridis", rotate=True):
+    """Animate the swarm of a **>2D** problem as a 3D point cloud.
+
+    Higher-dimensional swarms can't be drawn as a surface, so this projects each
+    particle to 3D — either with PCA (``method="pca"``, fit over the whole run so
+    the view is stable) or by picking three dimensions (``dims=(i, j, k)``). If
+    ``function`` is given, particles are colored by their objective value.
+
+    2D problems should use :func:`animate_swarm_3d` (a true surface) instead.
+    Needs ``record_history=True``. Returns a FuncAnimation.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+
+    if not result.history:
+        raise ValueError("run minimize(..., record_history=True)")
+    dim = len(result.history[0][0])
+    if dim < 3:
+        raise ValueError("animate_swarm_projected needs >= 3 dimensions; "
+                         "use animate_swarm_3d for 2D problems")
+
+    n_frames = len(result.history)
+    all_pos = np.array([p for frame in result.history for p in frame], dtype=float)
+
+    if dims is not None:
+        if len(dims) != 3:
+            raise ValueError("dims must be a tuple of three dimension indices")
+        project = lambda pts: pts[:, list(dims)]
+        labels = [f"x{d}" for d in dims]
+    elif method == "pca":
+        mean = all_pos.mean(axis=0)
+        _, _, vt = np.linalg.svd(all_pos - mean, full_matrices=False)
+        comps = vt[:3]
+        project = lambda pts: (pts - mean) @ comps.T
+        labels = ["PC1", "PC2", "PC3"]
+    else:
+        raise ValueError("method must be 'pca' (or pass dims=(i, j, k))")
+
+    logger.info("building projected 3D animation: %d frames, dim=%d, %s",
+                n_frames, dim, "dims" if dims is not None else method)
+
+    colored = function is not None
+    if colored:
+        vals_all = np.array([function(list(p)) for p in all_pos])
+        vmin, vmax = float(vals_all.min()), float(vals_all.max())
+    proj_all = project(all_pos)
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(projection="3d")
+    for k, lab in enumerate(labels):
+        (ax.set_xlabel, ax.set_ylabel, ax.set_zlabel)[k](lab)
+    ax.set_xlim(proj_all[:, 0].min(), proj_all[:, 0].max())
+    ax.set_ylim(proj_all[:, 1].min(), proj_all[:, 1].max())
+    ax.set_zlim(proj_all[:, 2].min(), proj_all[:, 2].max())
+
+    scat = ax.scatter([], [], [], s=36, edgecolors="white", linewidths=0.5,
+                      depthshade=False, cmap=cmap if colored else None,
+                      c=[] if colored else "orangered")
+    if colored:
+        scat.set_clim(vmin, vmax)
+        fig.colorbar(scat, ax=ax, shrink=0.6, label="objective value")
+
+    def update(frame):
+        pts = np.asarray(result.history[frame], dtype=float)
+        pr = project(pts)
+        scat._offsets3d = (pr[:, 0], pr[:, 1], pr[:, 2])
+        if colored:
+            scat.set_array(np.array([function(list(p)) for p in pts]))
+        if rotate:
+            ax.view_init(elev=30, azim=(-60 + frame * 1.5) % 360)
+        ax.set_title(f"Iteration {frame + 1}/{n_frames}  ·  dim={dim}")
+        return (scat,)
 
     return FuncAnimation(fig, update, frames=n_frames, interval=interval,
                          blit=False)

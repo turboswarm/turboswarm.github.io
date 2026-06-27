@@ -51,3 +51,30 @@ def history_dataframe(result):
             row.update({f"x{d}": v for d, v in enumerate(position)})
             records.append(row)
     return pd.DataFrame.from_records(records)
+
+
+def _frame(result, kind):
+    if kind == "history":
+        return history_dataframe(result)
+    if kind == "convergence":
+        return convergence_dataframe(result)
+    raise ValueError(f"kind must be 'history' or 'convergence', got {kind!r}")
+
+
+def to_csv(result, path, kind="history", **kwargs):
+    """Write the ``history`` (default) or ``convergence`` of a run to a CSV file.
+
+    Extra keyword arguments are forwarded to ``DataFrame.to_csv``.
+    """
+    _frame(result, kind).to_csv(path, index=False, **kwargs)
+    return path
+
+
+def to_parquet(result, path, kind="history", **kwargs):
+    """Write the ``history`` (default) or ``convergence`` of a run to Parquet.
+
+    Needs a Parquet engine (``pyarrow`` or ``fastparquet``). Extra keyword
+    arguments are forwarded to ``DataFrame.to_parquet``.
+    """
+    _frame(result, kind).to_parquet(path, index=False, **kwargs)
+    return path
