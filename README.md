@@ -190,6 +190,38 @@ notebooks/         example notebooks
 examples/          Rust (basic) and Python (quickstart.py) examples
 ```
 
+## How to cite
+
+If you use `turboswarm` in academic work, please cite it. GitHub's
+**"Cite this repository"** button (from [`CITATION.cff`](CITATION.cff)) gives
+ready-made APA and BibTeX entries. A paper describing the library is provided
+under [`paper/`](paper/) for arXiv submission; until it has an arXiv identifier,
+cite the archived software release:
+
+```bibtex
+@software{salmeron_turboswarm,
+  author    = {Salmeron, Jose L.},
+  title     = {{turboswarm}: A general-purpose, extensible Particle Swarm
+               Optimization library with a Rust core},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.20832446},
+  url       = {https://github.com/turboswarm/turboswarm.github.io}
+}
+```
+
+Once the paper is on arXiv, prefer the paper citation (replace the identifier):
+
+```bibtex
+@article{salmeron2026turboswarm,
+  author  = {Salmeron, Jose L.},
+  title   = {{turboswarm}: A general-purpose, extensible Particle Swarm
+             Optimization library with a Rust core},
+  journal = {arXiv preprint arXiv:XXXX.XXXXX},
+  year    = {2026}
+}
+```
+
 ## License
 
 MIT. See [`LICENSE`](LICENSE).
