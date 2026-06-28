@@ -73,3 +73,23 @@ the core. See [Architecture](architecture.md) and [Extending](extending.md).
 
 Start with [Installation](installation.md) and the
 [Getting started](getting-started.md) tutorial.
+
+## Citing
+
+If you use `turboswarm` in academic work, please cite it. GitHub's
+**"Cite this repository"** button (from `CITATION.cff`) produces ready-made APA
+and BibTeX entries. Until the accompanying paper has an arXiv identifier, cite
+the archived software release (Zenodo DOI
+[10.5281/zenodo.20832446](https://doi.org/10.5281/zenodo.20832446)):
+
+```bibtex
+@software{salmeron_turboswarm,
+  author    = {Salmeron, Jose L.},
+  title     = {{turboswarm}: A general-purpose, extensible Particle Swarm
+               Optimization library with a Rust core},
+  year      = {2026},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.20832446},
+  url       = {https://github.com/turboswarm/turboswarm.github.io}
+}
+```
